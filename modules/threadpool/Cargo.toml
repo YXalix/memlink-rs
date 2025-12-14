@@ -1,0 +1,15 @@
+[package]
+name = "threadpool"
+version = "0.1.0"
+description = "threadpool module for parallel task execution"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+categories.workspace = true
+keywords.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "1.0"

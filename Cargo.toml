@@ -3,7 +3,7 @@
 resolver = "2"
 
 members = [
-    "modules/obmm-rs",
+    "modules/obmm-rs", "modules/threadpool",
 ]
 
 [workspace.package]
