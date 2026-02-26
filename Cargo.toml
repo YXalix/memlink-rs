@@ -3,7 +3,10 @@
 resolver = "2"
 
 members = [
-    "modules/obmm-rs", "modules/threadpool",
+    "modules/etmem-rs",
+    "modules/obmm-rs",
+    "modules/threadpool",
+    "modules/ubfwctl",
 ]
 
 [workspace.package]
@@ -48,6 +51,8 @@ serde.workspace = true
 serde_json.workspace = true
 libc.workspace = true
 obmm-rs = { path = "modules/obmm-rs", features = ["hook"] }
+ubfwctl = { path = "modules/ubfwctl" }
+etmem-rs = { path = "modules/etmem-rs" }
 clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.10"
 log = "0.4"

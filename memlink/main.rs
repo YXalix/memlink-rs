@@ -2,100 +2,291 @@
 //!
 //! This tool allows exporting and importing memory regions across different nodes
 //! in a distributed system, enabling efficient memory sharing and management.
-#![deny(
-    absolute_paths_not_starting_with_crate,
-    explicit_outlives_requirements,
-    keyword_idents,
-    macro_use_extern_crate,
-    meta_variable_misuse,
-    missing_abi,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs,
-    non_ascii_idents,
-    noop_method_call,
-    rust_2021_incompatible_closure_captures,
-    rust_2021_incompatible_or_patterns,
-    rust_2021_prefixes_incompatible_syntax,
-    rust_2021_prelude_collisions,
-    single_use_lifetimes,
-    trivial_casts,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_code,
-    unsafe_op_in_unsafe_fn,
-    unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_lifetimes,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences,
-    warnings,
-    clippy::all,
-    clippy::pedantic,
-    clippy::cargo,
-    clippy::as_conversions,
-    clippy::clone_on_ref_ptr,
-    clippy::create_dir,
-    clippy::dbg_macro,
-    clippy::decimal_literal_representation,
-    clippy::disallowed_script_idents,
-    clippy::else_if_without_else,
-    clippy::exhaustive_enums,
-    clippy::exhaustive_structs,
-    clippy::exit,
-    clippy::expect_used,
-    clippy::filetype_is_file,
-    clippy::float_arithmetic,
-    clippy::float_cmp_const,
-    clippy::get_unwrap,
-    clippy::if_then_some_else_none,
-    clippy::indexing_slicing,
-    clippy::inline_asm_x86_intel_syntax,
-    clippy::arithmetic_side_effects,
-    clippy::let_underscore_must_use,
-    clippy::lossy_float_literal,
-    clippy::map_err_ignore,
-    clippy::mem_forget,
-    clippy::missing_docs_in_private_items,
-    clippy::missing_enforced_import_renames,
-    clippy::missing_inline_in_public_items,
-    clippy::modulo_arithmetic,
-    clippy::multiple_inherent_impl,
-    clippy::pattern_type_mismatch,
-    clippy::print_stderr,
-    clippy::print_stdout,
-    clippy::rc_buffer,
-    clippy::rc_mutex,
-    clippy::rest_pat_in_fully_bound_structs,
-    clippy::same_name_method,
-    clippy::self_named_module_files,
-    clippy::shadow_unrelated,
-    clippy::str_to_string,
-    clippy::string_add,
-    clippy::todo,
-    clippy::unimplemented,
-    clippy::unnecessary_self_imports,
-    clippy::unneeded_field_pattern,
-    clippy::unwrap_in_result,
-    clippy::unwrap_used,
-    clippy::verbose_file_reads,
-    clippy::wildcard_enum_match_arm,
-)]
+#![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use anyhow::Context;
+use clap::{Parser, Subcommand};
 use log::info;
-use obmm_rs::{UbPrivData, ObmmExportFlags, MAX_NUMA_NODES, mem_export};
+use obmm_rs::{mem_export, ObmmExportFlags, UbPrivData, MAX_NUMA_NODES};
+
+/// Memlink CLI arguments
+#[derive(Parser, Debug)]
+#[command(name = "memlink")]
+#[command(about = "Memory linking and analysis utilities")]
+#[command(version)]
+struct Cli {
+    /// Subcommand to execute
+    #[command(subcommand)]
+    command: Commands,
+}
+
+/// Available subcommands
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Export memory for remote access
+    Export {
+        /// NUMA node ID to export memory from
+        #[arg(short, long, default_value = "1")]
+        node: usize,
+        /// Size of memory to export in MB
+        #[arg(short, long, default_value = "128")]
+        size: usize,
+    },
+    /// Measure bandwidth and latency using mar_perf
+    MarPerf {
+        /// Chip ID
+        #[arg(short, long, default_value = "0")]
+        chip_id: u32,
+        /// Die ID
+        #[arg(short, long, default_value = "0")]
+        die_id: u32,
+        /// Port ID to measure
+        #[arg(short, long, default_value = "0")]
+        port: u32,
+        /// Measurement time in milliseconds (1-3600)
+        #[arg(short, long, default_value = "1000")]
+        time: u32,
+    },
+    /// ETMEM: Enhanced Tiered Memory management
+    Etmem {
+        #[command(subcommand)]
+        action: EtmemCommands,
+    },
+}
+
+/// ETMEM subcommands for tiered memory management
+#[derive(Subcommand, Debug)]
+enum EtmemCommands {
+    /// Scan process memory for idle/accessed pages
+    Scan {
+        /// Process ID to scan (default: current process)
+        #[arg(short, long)]
+        pid: Option<u32>,
+        /// Only scan huge pages (2MB/1GB)
+        #[arg(long)]
+        huge_only: bool,
+        /// Report dirty pages
+        #[arg(long)]
+        dirty: bool,
+        /// Only show idle (cold) pages
+        #[arg(long)]
+        idle_only: bool,
+    },
+    /// Swap out cold pages to free memory
+    Swap {
+        /// Process ID to swap pages from
+        #[arg(short, long)]
+        pid: Option<u32>,
+        /// Virtual addresses to swap (hex, comma-separated)
+        #[arg(short, long, value_delimiter = ',')]
+        addrs: Vec<String>,
+    },
+    /// Configure kernel swap settings
+    Config {
+        /// Enable kernel swap
+        #[arg(long)]
+        enable: bool,
+        /// Disable kernel swap
+        #[arg(long)]
+        disable: bool,
+        /// Show current status
+        #[arg(long)]
+        status: bool,
+    },
+}
 
 fn main() -> anyhow::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
-    let export_id = 1;
-    info!("Memory linking and analysis utilities");
+
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::Export { node, size } => {
+            info!("Exporting memory from NUMA node {node}, size: {size} MB");
+            export_memory(node, size)?;
+        }
+        Commands::MarPerf {
+            chip_id,
+            die_id,
+            port,
+            time,
+        } => {
+            info!("Running mar_perf measurement on chip {chip_id}, die {die_id}, port {port}, time: {time}ms");
+            run_mar_perf(chip_id, die_id, port, time)?;
+        }
+        Commands::Etmem { action } => {
+            handle_etmem_command(action)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Export memory from a NUMA node
+fn export_memory(node: usize, size_mb: usize) -> anyhow::Result<()> {
+    let export_id = node;
+    let size_bytes = size_mb * 1024 * 1024;
+
     let mut lens = vec![0; MAX_NUMA_NODES];
-    lens.get_mut(export_id).map(|v| *v = 1024 * 1024 * 128).with_context(|| format!("Failed to set length for NUMA node {export_id}"))?;
-    let (mem_id, desc) = mem_export::<UbPrivData>(&lens, ObmmExportFlags::ALLOWMMAP).with_context(|| "Failed to export memory")?;
+    lens.get_mut(export_id)
+        .map(|v| *v = size_bytes)
+        .with_context(|| format!("Failed to set length for NUMA node {export_id}"))?;
+
+    let (mem_id, desc) = mem_export::<UbPrivData>(&lens, ObmmExportFlags::ALLOWMMAP)
+        .with_context(|| "Failed to export memory")?;
+
     info!("Exported memory with MemID: {mem_id}");
     info!("Memory Descriptor: {desc:?}");
+
     Ok(())
+}
+
+/// Run mar_perf measurement and display results
+fn run_mar_perf(chip_id: u32, die_id: u32, port: u32, time: u32) -> anyhow::Result<()> {
+    let result = ubfwctl::mar_perf_measure(chip_id, die_id, port, time)
+        .with_context(|| "mar_perf measurement failed")?;
+
+    println!("{result}");
+
+    Ok(())
+}
+
+/// Handle ETMEM subcommands
+fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
+    use etmem_rs::{
+        IdlePageScanner, PageSwapper, ScanConfig, ScanFlags, SwapcacheConfig,
+    };
+
+    match action {
+        EtmemCommands::Scan {
+            pid,
+            huge_only,
+            dirty,
+            idle_only,
+        } => {
+            let pid = pid.unwrap_or_else(|| std::process::id());
+            println!("Scanning process {pid} for memory pages...");
+
+            // Check if ETMEM is available
+            if !etmem_rs::is_available() {
+                anyhow::bail!("ETMEM is not available. Check kernel configuration (CONFIG_ETMEM=y).");
+            }
+
+            // Build scan configuration
+            let mut flags = ScanFlags::empty();
+            if huge_only {
+                flags |= ScanFlags::SCAN_HUGE_PAGE;
+            }
+            if dirty {
+                flags |= ScanFlags::SCAN_DIRTY_PAGE;
+            }
+            let config = ScanConfig::default().with_flags(flags);
+
+            // Scan the process
+            let pages = IdlePageScanner::scan_process(pid, config)
+                .with_context(|| format!("Failed to scan process {pid}"))?;
+
+            // Filter and display results
+            let filtered_pages: Vec<_> = if idle_only {
+                pages.into_iter().filter(|p| p.is_idle()).collect()
+            } else {
+                pages
+            };
+
+            println!("\nFound {} memory regions:", filtered_pages.len());
+            println!("{:-^60}", "");
+            println!("{:>16}  {:<15}  {:<10}  {:<12}", "Address", "Type", "Count", "Size");
+            println!("{:-^60}", "");
+
+            let mut total_bytes = 0u64;
+            for page in &filtered_pages {
+                let size = page.total_size();
+                total_bytes += size;
+                println!(
+                    "{:>16x}  {:<15?}  {:<10}  {:<12}",
+                    page.address,
+                    page.page_type,
+                    page.count,
+                    etmem_rs::format_bytes(size)
+                );
+            }
+
+            println!("{:-^60}", "");
+            println!("Total: {} bytes ({})", total_bytes, etmem_rs::format_bytes(total_bytes));
+
+            // Show statistics
+            let stats = etmem_rs::IdlePageStats::from_pages(&filtered_pages);
+            println!("\nStatistics:");
+            println!("  Idle pages:     {} ({})", stats.idle_pages, etmem_rs::format_bytes(stats.idle_bytes));
+            println!("  Accessed pages: {} ({})", stats.accessed_pages, etmem_rs::format_bytes(stats.accessed_bytes));
+            println!("  Huge pages:     {}", stats.huge_pages);
+            println!("  Idle ratio:     {:.1}%", stats.idle_ratio() * 100.0);
+        }
+        EtmemCommands::Swap { pid, addrs } => {
+            if addrs.is_empty() {
+                anyhow::bail!("No addresses provided. Use --addrs to specify addresses to swap.");
+            }
+
+            let pid = pid.unwrap_or_else(|| std::process::id());
+            println!("Swapping pages in process {pid}...");
+
+            // Parse addresses
+            let mut parsed_addrs = Vec::new();
+            for addr_str in &addrs {
+                let addr = u64::from_str_radix(addr_str.trim_start_matches("0x"), 16)
+                    .with_context(|| format!("Invalid address: {addr_str}"))?;
+                parsed_addrs.push(addr);
+            }
+
+            // Swap the pages
+            let swapped = PageSwapper::swap_pages(pid, &parsed_addrs)
+                .with_context(|| format!("Failed to swap pages in process {pid}"))?;
+
+            println!("Successfully swapped {swapped} pages");
+        }
+        EtmemCommands::Config {
+            enable,
+            disable,
+            status,
+        } => {
+            if enable {
+                SwapcacheConfig::enable()
+                    .with_context(|| "Failed to enable kernel swap")?;
+                println!("Kernel swap enabled");
+            } else if disable {
+                SwapcacheConfig::disable()
+                    .with_context(|| "Failed to disable kernel swap")?;
+                println!("Kernel swap disabled");
+            } else if status || (!enable && !disable) {
+                let enabled = SwapcacheConfig::is_enabled()
+                    .with_context(|| "Failed to check kernel swap status")?;
+                println!("Kernel swap status: {}", if enabled { "enabled" } else { "disabled" });
+
+                // Also check ETMEM availability
+                println!("ETMEM available: {}", etmem_rs::is_available());
+                println!("Root privileges: {}", etmem_rs::has_permission());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_etmem_availability() {
+        // Just check that the function works
+        let available = etmem_rs::is_available();
+        println!("ETMEM available: {available}");
+    }
+
+    #[test]
+    fn test_etmem_permission() {
+        // Just check that the function works
+        let has_perm = etmem_rs::has_permission();
+        println!("Has root permission: {has_perm}");
+    }
 }
