@@ -39,7 +39,7 @@ pub struct ThreadPool {
 
 #[derive(Debug)]
 struct Worker {
-    id: usize,
+    _id: usize,
     thread: thread::JoinHandle<()>,
 }
 
@@ -48,12 +48,12 @@ impl Worker {
 
         let thread_builder = thread::Builder::new();
         let thread = thread_builder
-            .name(format!("worker:{}", id))
+            .name(format!("worker-{}", id))
             .spawn(move || {
                 Self::run_worker(id, receiver)
             }).map_err(|e| ThreadPoolError::ThreadCreationFailed(e.to_string()))?;
 
-        Ok(Worker { id, thread })
+        Ok(Worker { _id: id, thread })
     }
 
     fn run_worker(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) {
@@ -230,11 +230,10 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-        if !self.is_shutdown {
-            if let Err(e) = self.shutdown() {
+        if !self.is_shutdown
+            && let Err(e) = self.shutdown() {
                 eprintln!("Error during thread pool drop: {}", e);
             }
-        }
     }
 }
 
