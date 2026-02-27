@@ -4,7 +4,7 @@
 //! including memory ID to physical address translation and vice versa.
 
 use crate::error::{ObmmError, Result};
-#[cfg(not(feature = "hook"))]
+#[cfg(feature = "native")]
 use crate::sys;
 use crate::types::{MemId, QueryResult};
 
@@ -38,7 +38,7 @@ use crate::types::{MemId, QueryResult};
 ///     Err(e) => eprintln!("Query failed: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
     // Hooked implementation for testing
@@ -55,13 +55,28 @@ pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
 
 /// Query memory ID by physical address (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Looks up the memory region using the actual OBMM C library.
+///
+/// # Arguments
+/// * `pa` - Physical address to query
+///
+/// # Returns
+/// A `QueryResult` containing:
+/// - The memory ID of the region containing the address
+/// - The offset within that region
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The physical address is not found in any OBMM memory region
+#[cfg(feature = "native")]
 #[inline]
 pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
     let mut mem_id: MemId = 0;
     let mut offset: u64 = 0;
-    let ret = unsafe { sys::obmm_query_memid_by_pa(pa, &mut mem_id, &mut offset) };
+    let mem_id_ptr = std::ptr::addr_of_mut!(mem_id);
+    let offset_ptr = std::ptr::addr_of_mut!(offset);
+    let ret = unsafe { sys::obmm_query_memid_by_pa(pa, mem_id_ptr, offset_ptr) };
 
     if ret == 0 {
         Ok(QueryResult {
@@ -101,7 +116,7 @@ pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
 ///     Err(e) => eprintln!("Query failed: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn query_pa_by_memid(mem_id: MemId, offset: u64) -> Result<u64> {
     // Hooked implementation for testing
@@ -117,12 +132,26 @@ pub fn query_pa_by_memid(mem_id: MemId, offset: u64) -> Result<u64> {
 
 /// Query physical address by memory ID (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Converts a memory ID to physical address using the actual OBMM C library.
+///
+/// # Arguments
+/// * `mem_id` - Memory ID to query
+/// * `offset` - Offset within the memory region
+///
+/// # Returns
+/// The physical address corresponding to the memory ID and offset
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The memory ID is invalid
+/// - The offset is out of bounds for the memory region
+#[cfg(feature = "native")]
 #[inline]
 pub fn query_pa_by_memid(mem_id: MemId, offset: u64) -> Result<u64> {
     let mut pa: u64 = 0;
-    let ret = unsafe { sys::obmm_query_pa_by_memid(mem_id, offset, &mut pa) };
+    let pa_ptr = std::ptr::addr_of_mut!(pa);
+    let ret = unsafe { sys::obmm_query_pa_by_memid(mem_id, offset, pa_ptr) };
 
     if ret == 0 {
         Ok(pa)

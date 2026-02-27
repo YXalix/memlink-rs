@@ -3,8 +3,13 @@
 //! This module provides safe wrappers for setting memory ownership
 //! permissions on OBMM memory regions.
 
+#[cfg(feature = "native")]
+use std::ffi::c_void;
+
 use crate::error::{ObmmError, Result};
-#[cfg(not(feature = "hook"))]
+#[cfg(feature = "native")]
+use crate::error::ToObmmResult;
+#[cfg(feature = "native")]
 use crate::sys;
 
 /// Memory protection constants (matching C PROT_* values)
@@ -54,7 +59,7 @@ pub mod prot {
 ///     Err(e) => eprintln!("Failed to set ownership: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn set_ownership(_fd: i32, _start: u64, _end: u64, _prot: i32) -> Result<()> {
     // Hooked implementation for testing
@@ -63,9 +68,23 @@ pub fn set_ownership(_fd: i32, _start: u64, _end: u64, _prot: i32) -> Result<()>
 
 /// Set ownership of a memory region (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Sets the ownership (read, write, none) using the actual OBMM C library.
+///
+/// # Arguments
+/// * `fd` - The file descriptor of an OBMM memory device
+/// * `start` - The start virtual address of the range
+/// * `end` - The end virtual address of the range
+/// * `prot` - The ownership expressed as protection bits
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The file descriptor is invalid
+/// - The address range is invalid or not OBMM-managed
+/// - The ownership operation fails
+#[cfg(feature = "native")]
 #[inline]
+#[allow(clippy::as_conversions)]
 pub fn set_ownership(fd: i32, start: u64, end: u64, prot: i32) -> Result<()> {
     let ret = unsafe {
         sys::obmm_set_ownership(
@@ -208,11 +227,11 @@ mod tests {
 
         assert_eq!(setter.prot, prot::READ);
 
-        let setter = OwnershipSetter::new(5)
+        let setternew = OwnershipSetter::new(5)
             .range(0x1000, 0x2000)
             .no_access();
 
-        assert_eq!(setter.prot, prot::NONE);
+        assert_eq!(setternew.prot, prot::NONE);
     }
 
     #[test]

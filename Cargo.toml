@@ -50,7 +50,7 @@ thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 libc.workspace = true
-obmm-rs = { path = "modules/obmm-rs", features = ["hook"] }
+obmm-rs = { path = "modules/obmm-rs", default-features = false }
 ubfwctl = { path = "modules/ubfwctl" }
 etmem-rs = { path = "modules/etmem-rs" }
 clap = { version = "4.0", features = ["derive"] }

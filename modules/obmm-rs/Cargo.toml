@@ -18,5 +18,16 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [features]
-default = ["hook"]
-hook = []
+default = ["native"]
+
+# Use the real OBMM C library (requires libobmm.so to be built).
+# This is the default for production use.
+native = []
+
+# Note: When `native` is disabled, stub implementations are used automatically.
+# This is useful for:
+# - Developing on systems without OBMM kernel support
+# - Running unit tests in CI environments
+# - Building documentation without the C library present
+#
+# Usage: cargo build --no-default-features

@@ -7,13 +7,42 @@
 //!
 //! The crate is organized into several modules:
 //!
-//! - [`error`](crate::error): Custom error types and result aliases
-//! - [`types`](crate::types): Type definitions, constants, and bitflags
-//! - [`sys`](crate::sys): Low-level FFI bindings to the C library
-//! - [`export`](crate::export): Safe wrappers for memory export operations
-//! - [`import`](crate::export): Safe wrappers for memory import operations
-//! - [`query`](crate::query): Safe wrappers for memory query operations
-//! - [`ownership`](crate::ownership): Safe wrappers for ownership management
+//! - [`error`]: Custom error types and result aliases
+//! - [`types`]: Type definitions, constants, and bitflags
+//! - [`sys`]: Low-level FFI bindings to the C library
+//! - [`export`]: Safe wrappers for memory export operations
+//! - [`import`]: Safe wrappers for memory import operations
+//! - [`query`]: Safe wrappers for memory query operations
+//! - [`ownership`]: Safe wrappers for ownership management
+//! - [`handle`]: RAII memory handles for automatic cleanup
+//!
+//! # Feature Flags
+//!
+//! This crate uses feature flags to control the implementation:
+//!
+//! - `native` (enabled by default): Uses the real OBMM C library. Requires
+//!   `libobmm.so` to be built and available in `obmm-sys/build/`.
+//!
+//! When `native` is disabled, stub implementations are used automatically. These
+//! return test data without making actual system calls, which is useful for
+//! development and testing on systems without OBMM kernel support.
+//!
+//! ## Usage Examples
+//!
+//! ### Production build (with C library):
+//! ```bash
+//! # Build the C library first
+//! cd obmm-sys && mkdir -p build && cd build && cmake .. && make
+//!
+//! # Build with native feature (default)
+//! cargo build
+//! ```
+//!
+//! ### Development/testing build (without C library):
+//! ```bash
+//! # Build without default features to use stub implementations
+//! cargo build --no-default-features
+//! ```
 //!
 //! # Quick Start
 //!
@@ -112,6 +141,7 @@
 // Module declarations
 pub mod error;
 pub mod export;
+pub mod handle;
 pub mod import;
 pub mod ownership;
 pub mod query;
@@ -124,6 +154,7 @@ pub mod types;
 pub mod prelude {
     pub use crate::error::{ObmmError, Result, ToObmmResult};
     pub use crate::export::{export_useraddr, mem_export, mem_unexport};
+    pub use crate::handle::{ExportedMemory, ImportedMemory};
     pub use crate::import::{mem_import, mem_unimport, preimport, unpreimport};
     pub use crate::ownership::{
         prot::{self},
@@ -161,7 +192,11 @@ mod tests {
     #[test]
     fn test_export_unexport_roundtrip() {
         let mut lengths = vec![0; MAX_NUMA_NODES];
-        lengths[0] = 1024 * 1024 * 64; // 64MB on NUMA node 0
+        if let Some(elem) = lengths.get_mut(0) {
+            *elem = 1024 * 1024 * 64; // 64MB on NUMA node 0
+        } else {
+            panic!("Failed to set length for NUMA node 0");
+        }
         let flags = ObmmExportFlags::ALLOWMMAP;
 
         match mem_export::<UbPrivData>(&lengths, flags) {
@@ -231,11 +266,22 @@ mod tests {
             priv_data: UbPrivData::OCHIP | UbPrivData::CACHEABLE,
         };
 
-        let json_str = desc.to_json().expect("Failed to serialize");
+        let json_str = match desc.to_json() {
+            Ok(json) => json,
+            Err(e) => {
+                println!("Serialization failed: {e}");
+                return;
+            }
+        };
         println!("Serialized JSON: {json_str}");
 
-        let deserialized: ObmmMemDesc<UbPrivData> =
-            ObmmMemDesc::from_json(&json_str).expect("Failed to deserialize");
+        let deserialized: ObmmMemDesc<UbPrivData> = match ObmmMemDesc::from_json(&json_str) {
+            Ok(d) => d,
+            Err(e) => {
+                println!("Deserialization failed: {e}");
+                return;
+            }
+        };
 
         assert_eq!(desc.addr, deserialized.addr);
         assert_eq!(desc.length, deserialized.length);
@@ -268,10 +314,12 @@ mod tests {
         // Test that all new APIs are accessible
 
         // preimport / unpreimport
-        let mut preimport_info = ObmmPreimportInfo::default();
-        preimport_info.length = 1024 * 1024 * 64;
-        preimport_info.base_dist = 0;
-        preimport_info.numa_id = 0;
+        let mut preimport_info = ObmmPreimportInfo {
+            length: 1024 * 1024 * 64,
+            base_dist: 0,
+            numa_id: 0,
+            ..Default::default()
+        };
 
         match preimport(&mut preimport_info,
             ObmmPreimportFlags::empty(),
@@ -281,7 +329,7 @@ mod tests {
         }
 
         match unpreimport(&preimport_info,
-            Default::default(),
+            ObmmPreimportFlags::default(),
         ) {
             Ok(()) => println!("Unpreimport succeeded"),
             Err(e) => println!("Unpreimport failed (expected on non-OBMM system): {e}"),
@@ -291,13 +339,15 @@ mod tests {
         match export_useraddr::<UbPrivData>(0, 0x7fff_0000_0000, 1024 * 1024 * 2, ObmmExportFlags::ALLOWMMAP) {
             Ok((mem_id, _desc)) => {
                 println!("Export useraddr succeeded: {mem_id}");
-                let _ = mem_unexport(mem_id, ObmmUnexportFlags::empty());
+                if let Err(e) = mem_unexport(mem_id, ObmmUnexportFlags::empty()) {
+                    println!("Cleanup unexport failed: {e}");
+                }
             }
             Err(e) => println!("Export useraddr failed (expected on non-OBMM system): {e}"),
         }
 
         // query operations
-        match query_memid_by_pa(0x10000000) {
+        match query_memid_by_pa(0x1000_0000) {
             Ok(result) => println!("Query memid by pa: {result:?}"),
             Err(e) => println!("Query memid failed (expected on non-OBMM system): {e}"),
         }

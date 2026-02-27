@@ -3,8 +3,13 @@
 //! This module provides safe wrappers for memory import operations including
 //! standard memory import, preimport, and their unimport counterparts.
 
+#[cfg(feature = "native")]
+use std::ffi::c_void;
+
 use crate::error::{ObmmError, Result};
-#[cfg(not(feature = "hook"))]
+#[cfg(feature = "native")]
+use crate::error::ToObmmResult;
+#[cfg(feature = "native")]
 use crate::sys;
 use crate::types::{
     ImportResult, MemId, ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags, ObmmPreimportInfo,
@@ -41,7 +46,7 @@ use crate::types::{
 ///     Err(e) => eprintln!("Import failed: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn mem_import(
     _: &ObmmMemDesc<UbPrivData>,
@@ -63,8 +68,24 @@ pub fn mem_import(
 
 /// Import memory region (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Imports a remote memory region using the actual OBMM C library.
+///
+/// # Arguments
+/// * `desc` - Memory descriptor from the remote export
+/// * `flags` - Import flags
+/// * `base_dist` - Base distribution hint for NUMA placement
+///
+/// # Returns
+/// An `ImportResult` containing:
+/// - The memory ID assigned to the imported region
+/// - The NUMA node where the memory was placed
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The memory descriptor is invalid
+/// - The import operation fails (e.g., insufficient memory)
+#[cfg(feature = "native")]
 #[inline]
 pub fn mem_import(
     desc: &ObmmMemDesc<UbPrivData>,
@@ -72,12 +93,14 @@ pub fn mem_import(
     base_dist: i32,
 ) -> Result<ImportResult> {
     let mut numa: i32 = -1;
+    let desc_ptr = std::ptr::addr_of!(*desc);
+    let numa_ptr = std::ptr::addr_of_mut!(numa);
     let memid = unsafe {
         sys::obmm_import(
-            desc as *const ObmmMemDesc<UbPrivData> as *const c_void,
+            desc_ptr.cast::<c_void>(),
             flags.bits(),
             base_dist,
-            &mut numa as *mut i32,
+            numa_ptr,
         )
     };
     if memid == OBMM_INVALID_MEMID {
@@ -112,7 +135,7 @@ pub fn mem_import(
 ///     Err(e) => eprintln!("Unimport failed: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn mem_unimport(_: MemId, _: ObmmExportFlags) -> Result<()> {
     // Hooked implementation for testing
@@ -121,8 +144,18 @@ pub fn mem_unimport(_: MemId, _: ObmmExportFlags) -> Result<()> {
 
 /// Unimport memory region (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Unimports a previously imported memory region using the actual OBMM C library.
+///
+/// # Arguments
+/// * `mem_id` - Memory ID to unimport
+/// * `flags` - Unimport flags
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The memory ID is invalid or not imported
+/// - The unimport operation fails (e.g., memory still in use)
+#[cfg(feature = "native")]
 #[inline]
 pub fn mem_unimport(mem_id: MemId, flags: ObmmExportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_unimport(mem_id, flags.bits()) };
@@ -157,7 +190,7 @@ pub fn mem_unimport(mem_id: MemId, flags: ObmmExportFlags) -> Result<()> {
 ///     Err(e) => eprintln!("Preimport failed: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn preimport(_: &mut ObmmPreimportInfo, _: ObmmPreimportFlags) -> Result<()> {
     // Hooked implementation for testing
@@ -166,8 +199,18 @@ pub fn preimport(_: &mut ObmmPreimportInfo, _: ObmmPreimportFlags) -> Result<()>
 
 /// Preimport memory region (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Preimports a memory region using the actual OBMM C library.
+///
+/// # Arguments
+/// * `info` - Preimport information structure containing region details
+/// * `flags` - Preimport flags
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The preimport information is invalid
+/// - The preimport operation fails (e.g., insufficient memory)
+#[cfg(feature = "native")]
 #[inline]
 pub fn preimport(info: &mut ObmmPreimportInfo, flags: ObmmPreimportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_preimport(info, flags.bits()) };
@@ -196,7 +239,7 @@ pub fn preimport(info: &mut ObmmPreimportInfo, flags: ObmmPreimportFlags) -> Res
 ///     Err(e) => eprintln!("Unpreimport failed: {}", e),
 /// }
 /// ```
-#[cfg(feature = "hook")]
+#[cfg(not(feature = "native"))]
 #[inline]
 pub fn unpreimport(_: &ObmmPreimportInfo, _: ObmmPreimportFlags) -> Result<()> {
     // Hooked implementation for testing
@@ -205,8 +248,18 @@ pub fn unpreimport(_: &ObmmPreimportInfo, _: ObmmPreimportFlags) -> Result<()> {
 
 /// Unpreimport memory region (real implementation)
 ///
-/// See the hooked version for documentation.
-#[cfg(not(feature = "hook"))]
+/// Removes a preimported memory region using the actual OBMM C library.
+///
+/// # Arguments
+/// * `info` - Preimport information structure (must match the one used for preimport)
+/// * `flags` - Unpreimport flags
+///
+/// # Errors
+/// Returns an error if:
+/// - The kernel OBMM subsystem is not available
+/// - The preimport information does not match an existing preimport
+/// - The unpreimport operation fails
+#[cfg(feature = "native")]
 #[inline]
 pub fn unpreimport(info: &ObmmPreimportInfo, flags: ObmmPreimportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_unpreimport(info, flags.bits()) };
