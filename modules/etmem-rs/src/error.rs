@@ -24,6 +24,8 @@ pub enum EtmemError {
     IoctlError(i32),
     /// Buffer too small
     BufferTooSmall,
+    /// Buffer too large
+    BufferTooLarge,
     /// Kernel buffer full (more data available)
     KernelBufferFull,
     /// User buffer full
@@ -65,6 +67,11 @@ impl fmt::Display for EtmemError {
                 f,
                 "Buffer too small (minimum {} bytes)",
                 crate::types::PAGE_IDLE_BUF_MIN
+            ),
+            EtmemError::BufferTooLarge => write!(
+                f,
+                "Buffer too large (maximum {} bytes)",
+                crate::types::PAGE_IDLE_KBUF_SIZE
             ),
             EtmemError::KernelBufferFull => write!(f, "Kernel buffer full, more data available"),
             EtmemError::UserBufferFull => write!(f, "User buffer full"),

@@ -31,24 +31,33 @@ pub const SYS_ETMEM_SWAP_ENABLE: &str = "/sys/kernel/mm/etmem/kernel_swap_enable
 /// - bits 8-15: magic number (0x66 for idle scan)
 /// - bits 16-29: size of argument
 /// - bit 30: _IOW (write to kernel)
+///
+/// IOCTL command to add scan flags
 pub const IDLE_SCAN_ADD_FLAGS: u64 =
-    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x0u64 << 0) | (4u64 << 16) | (1u64 << 30);
+    ((IDLE_SCAN_MAGIC as u64) << 8) | (4u64 << 16) | (1u64 << 30);
+/// IOCTL command to remove scan flags
 pub const IDLE_SCAN_REMOVE_FLAGS: u64 =
-    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x1u64 << 0) | (4u64 << 16) | (1u64 << 30);
+    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x1u64) | (4u64 << 16) | (1u64 << 30);
+/// IOCTL command to add VMA scan flags
 pub const VMA_SCAN_ADD_FLAGS: u64 =
-    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x2u64 << 0) | (4u64 << 16) | (1u64 << 30);
+    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x2u64) | (4u64 << 16) | (1u64 << 30);
+/// IOCTL command to remove VMA scan flags
 pub const VMA_SCAN_REMOVE_FLAGS: u64 =
-    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x3u64 << 0) | (4u64 << 16) | (1u64 << 30);
+    ((IDLE_SCAN_MAGIC as u64) << 8) | (0x3u64) | (4u64 << 16) | (1u64 << 30);
 
 /// IOCTL commands for swapcache reclaim operations
 ///
 /// Uses magic number 0x77 for swapcache operations.
+///
+/// IOCTL command to enable swapcache reclaim
 pub const RECLAIM_SWAPCACHE_ON: u64 =
-    ((RECLAIM_SWAPCACHE_MAGIC as u64) << 8) | (0x01u64 << 0) | (4u64 << 16) | (1u64 << 30);
+    ((RECLAIM_SWAPCACHE_MAGIC as u64) << 8) | (0x01u64) | (4u64 << 16) | (1u64 << 30);
+/// IOCTL command to disable swapcache reclaim
 pub const RECLAIM_SWAPCACHE_OFF: u64 =
-    ((RECLAIM_SWAPCACHE_MAGIC as u64) << 8) | (0x00u64 << 0) | (4u64 << 16) | (1u64 << 30);
+    ((RECLAIM_SWAPCACHE_MAGIC as u64) << 8) | (4u64 << 16) | (1u64 << 30);
+/// IOCTL command to set swapcache watermark
 pub const SET_SWAPCACHE_WMARK: u64 =
-    ((RECLAIM_SWAPCACHE_MAGIC as u64) << 8) | (0x02u64 << 0) | (8u64 << 16) | (1u64 << 30);
+    ((RECLAIM_SWAPCACHE_MAGIC as u64) << 8) | (0x02u64) | (8u64 << 16) | (1u64 << 30);
 
 use crate::types::{IDLE_SCAN_MAGIC, RECLAIM_SWAPCACHE_MAGIC};
 
@@ -298,7 +307,7 @@ mod tests {
     fn test_ioctl_encoding() {
         // Verify IOCTL command encoding matches kernel expectations
         // _IOW(0x66, 0, u32) for IDLE_SCAN_ADD_FLAGS
-        let expected = ((0x66u64) << 8) | (0u64 << 0) | (4u64 << 16) | (1u64 << 30);
+        let expected = ((0x66u64) << 8) | (4u64 << 16) | (1u64 << 30);
         assert_eq!(IDLE_SCAN_ADD_FLAGS, expected);
     }
 }

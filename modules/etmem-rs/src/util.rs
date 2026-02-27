@@ -9,13 +9,13 @@ use crate::types::{IdlePageInfo, ProcIdlePageType};
 /// Check if an address is page-aligned (4KB)
 #[inline]
 pub const fn is_page_aligned(addr: u64) -> bool {
-    addr % 4096 == 0
+    addr.is_multiple_of(4096)
 }
 
 /// Check if an address is huge page aligned (2MB)
 #[inline]
 pub const fn is_huge_page_aligned(addr: u64) -> bool {
-    addr % (2 * 1024 * 1024) == 0
+    addr.is_multiple_of(2 * 1024 * 1024)
 }
 
 /// Align an address down to page boundary (4KB)
@@ -27,7 +27,7 @@ pub const fn page_align_down(addr: u64) -> u64 {
 /// Align an address up to page boundary (4KB)
 #[inline]
 pub const fn page_align_up(addr: u64) -> u64 {
-    ((addr + 4096 - 1) / 4096) * 4096
+    addr.div_ceil(4096) * 4096
 }
 
 /// Align an address down to huge page boundary (2MB)
@@ -224,7 +224,7 @@ pub const fn pages_to_bytes(pages: u64, page_size: u64) -> u64 {
 /// Convert bytes to page count
 #[inline]
 pub const fn bytes_to_pages(bytes: u64, page_size: u64) -> u64 {
-    (bytes + page_size - 1) / page_size
+    bytes.div_ceil(page_size)
 }
 
 #[cfg(test)]

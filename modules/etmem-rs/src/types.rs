@@ -18,17 +18,18 @@ pub const INVALID_PAGE: u64 = !0u64;
 /// Watermark maximum percentage
 pub const WATERMARK_MAX: u32 = 100;
 
-/// IOCTL magic numbers for ETMEM operations
+/// IOCTL magic number for idle scan operations
 pub const IDLE_SCAN_MAGIC: u8 = 0x66;
+/// IOCTL magic number for swapcache reclaim operations
 pub const RECLAIM_SWAPCACHE_MAGIC: u8 = 0x77;
 
 /// Maximum number of pages to scan per iteration
 pub const SWAP_SCAN_NUM_MAX: u32 = 32;
 
-/// Flag to trigger rescan
+/// Flag to trigger rescan when set in return value
 pub const RET_RESCAN_FLAG: u32 = 0x10000;
 
-/// Default walk step (number of pages)
+/// Default walk step (number of pages to skip between samples)
 pub const DEFAULT_WALK_STEP: u32 = 512;
 
 /// Page type enumeration for idle page detection
@@ -166,11 +167,11 @@ impl PipEncoding {
     }
 }
 
-/// Idle page scan flags
-///
-/// These flags control the behavior of page scanning operations.
-/// They can be combined using bitwise OR.
 bitflags! {
+    /// Idle page scan flags
+    ///
+    /// These flags control the behavior of page scanning operations.
+    /// They can be combined using bitwise OR.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
     pub struct ScanFlags: u32 {
         /// Only scan huge pages (maps to O_NONBLOCK)
@@ -276,7 +277,7 @@ impl IdlePageInfo {
 /// Virtual address range for scanning
 ///
 /// Defines a range of virtual addresses to scan.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct AddressRange {
     /// Start address (inclusive)
     pub start: u64,
@@ -316,12 +317,6 @@ impl AddressRange {
     /// Check if this range overlaps with another
     pub const fn overlaps(&self, other: &Self) -> bool {
         self.start < other.end && other.start < self.end
-    }
-}
-
-impl Default for AddressRange {
-    fn default() -> Self {
-        Self { start: 0, end: 0 }
     }
 }
 
@@ -452,8 +447,7 @@ impl ScanConfig {
             return Err(EtmemError::BufferTooSmall);
         }
         if self.buffer_size > PAGE_IDLE_KBUF_SIZE {
-            // Clamp to max size
-            return Err(EtmemError::BufferTooSmall);
+            return Err(EtmemError::BufferTooLarge);
         }
         Ok(())
     }
@@ -584,7 +578,16 @@ mod tests {
         let config = ScanConfig::default();
         assert!(config.validate().is_ok());
 
-        let invalid = ScanConfig::default().with_buffer_size(10);
-        assert!(invalid.validate().is_err());
+        let too_small = ScanConfig::default().with_buffer_size(10);
+        assert!(matches!(
+            too_small.validate().unwrap_err(),
+            crate::error::EtmemError::BufferTooSmall
+        ));
+
+        let too_large = ScanConfig::default().with_buffer_size(PAGE_IDLE_KBUF_SIZE + 1);
+        assert!(matches!(
+            too_large.validate().unwrap_err(),
+            crate::error::EtmemError::BufferTooLarge
+        ));
     }
 }

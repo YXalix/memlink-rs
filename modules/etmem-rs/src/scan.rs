@@ -32,6 +32,8 @@ pub struct PageIdleCtrl {
     /// Restart GPA for resuming scan
     restart_gpa: u64,
     /// Last VA processed (for duplicate detection)
+    /// Used by PIP encoding for write-path operations
+    #[allow(dead_code)]
     last_va: u64,
     /// Scan flags
     flags: ScanFlags,
@@ -82,6 +84,8 @@ impl PageIdleCtrl {
     ///
     /// This implements the PIP (Proc Idle Page) encoding logic from the kernel,
     /// merging consecutive pages of the same type when possible.
+    /// Reserved for future write-path operations.
+    #[allow(dead_code)]
     fn add_page_internal(
         &mut self,
         addr: u64,
@@ -90,16 +94,15 @@ impl PageIdleCtrl {
         page_size: u64,
     ) -> BufferStatus {
         // Check if we can merge with the previous entry
-        if let Some(last) = self.results.back_mut() {
-            if last.page_type == page_type
-                && last.end_address() == addr
-                && last.count < 16
-                && last.page_type.page_size() == page_size
-            {
-                // Merge with previous entry
-                last.count += 1;
-                return BufferStatus::Success;
-            }
+        if let Some(last) = self.results.back_mut()
+            && last.page_type == page_type
+            && last.end_address() == addr
+            && last.count < 16
+            && last.page_type.page_size() == page_size
+        {
+            // Merge with previous entry
+            last.count += 1;
+            return BufferStatus::Success;
         }
 
         // Check buffer capacity
@@ -282,7 +285,7 @@ impl ScanSession {
     /// - Invalid data received from kernel
     pub fn read(&mut self, start_addr: u64) -> Result<(Vec<IdlePageInfo>, Option<u64>)> {
         // Validate address alignment (must be page-aligned)
-        if start_addr % 4096 != 0 {
+        if !start_addr.is_multiple_of(4096) {
             return Err(EtmemError::InvalidAddress);
         }
 
@@ -508,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_address_range_validation() {
-        let range = AddressRange::new(0x1000, 0x5000);
+        let _range = AddressRange::new(0x1000, 0x5000);
         let mut ctrl = PageIdleCtrl::default();
 
         // Simulate adding pages

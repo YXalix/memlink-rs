@@ -71,7 +71,7 @@ impl SwapSession {
     /// Returns error if the address is not page-aligned.
     pub fn add_address(&mut self, addr: u64) -> Result<()> {
         // Validate address alignment (must be page-aligned)
-        if addr % 4096 != 0 {
+        if !addr.is_multiple_of(4096) {
             return Err(EtmemError::InvalidAddress);
         }
 
