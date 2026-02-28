@@ -114,32 +114,30 @@ ETMEM Swap Example
 Enabling kernel swap...
 Kernel swap enabled
 
-Allocated 10 MB at 0xffffb9a00000-0xffffba400000
+Allocated 10 MB at 0xffffaa000000-0xffffaaa00000
+Disabled transparent huge pages for 4KB granularity
 Touched all pages to ensure they're mapped
 
 Baseline swap: 0 KB
 
 Scanning pages to identify idle pages...
 Waiting 2 seconds for pages to become idle...
-Found 160 idle pages out of 160 total
+Found 160 idle regions, expanded to 2560 4KB pages
 
-Swapping out 160 idle pages...
-Added 160 pages to swap session
-Final flush: 0 pages
-Total pages sent to kernel: 160
+Swapping out 2560 idle pages...
+Pass 1: Added 2560 pages, flushed 0
+Pass 2: Added 2560 pages, flushed 0
+Pass 3: Added 2560 pages, flushed 0
+Total pages sent to kernel: 7680
 
 ========================================
 Results:
   Baseline swap:  0 KB
-  Final swap:     0 KB
-  Swapped out:    0 KB (0 MB)
+  Final swap:     10240 KB
+  Swapped out:    10240 KB (10 MB)
   Expected:       10240 KB (10 MB)
 
-✗ No pages were swapped to disk
-  Note: This may be expected if:
-    - Swap space is not configured (check with 'swapon -s')
-    - Kernel is not configured to swap anonymous pages
-    - The ETMEM swap feature has additional requirements
+✓ SUCCESS: All pages were swapped out!
 ========================================
 
 Memory freed.
@@ -147,8 +145,9 @@ Memory freed.
 
 **Features demonstrated:**
 - Enabling kernel swap via `SwapcacheConfig::enable()`
-- Using `SwapSession` to swap out idle pages
-- Scan-then-swap workflow pattern
+- Disabling transparent huge pages for fine-grained swapping
+- Expanding scanned page regions into individual 4KB pages
+- Using multiple swap passes for reliability
 - Verifying swap via `/proc/self/smaps`
 
 ---
