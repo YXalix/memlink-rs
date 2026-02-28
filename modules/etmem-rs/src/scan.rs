@@ -136,20 +136,16 @@ impl PageIdleCtrl {
             // Check for command marker
             if page_type_raw == ProcIdlePageType::PipCmd as u8 {
                 // Handle command (e.g., SET_HVA)
+                // Kernel format: [0xa0] [64-bit address 8 bytes BE]
+                // Reference: etmemd_scan.c get_address_from_buf()
                 if byte == PipEncoding::SET_HVA && i + 8 < data.len() {
-                    // Read 64-bit HVA from next 8 bytes
-                    let hva_bytes = &data[i + 1..i + 9];
-                    current_addr = u64::from_le_bytes([
-                        hva_bytes[0],
-                        hva_bytes[1],
-                        hva_bytes[2],
-                        hva_bytes[3],
-                        hva_bytes[4],
-                        hva_bytes[5],
-                        hva_bytes[6],
-                        hva_bytes[7],
+                    // Read 64-bit address from next 8 bytes (big-endian)
+                    let addr_bytes = &data[i + 1..i + 9];
+                    current_addr = u64::from_be_bytes([
+                        addr_bytes[0], addr_bytes[1], addr_bytes[2], addr_bytes[3],
+                        addr_bytes[4], addr_bytes[5], addr_bytes[6], addr_bytes[7],
                     ]);
-                    i += 9;
+                    i += 9; // 1 command byte + 8 address bytes
                     continue;
                 }
                 // Unknown command, skip
@@ -489,16 +485,81 @@ mod tests {
         let mut ctrl = PageIdleCtrl::default();
 
         // Create PIP data with SET_HVA command
-        let mut data = vec![PipEncoding::SET_HVA];
-        let hva: u64 = 0x10000;
-        data.extend_from_slice(&hva.to_le_bytes());
-        // Add a PTE_IDLE entry
-        data.push(PipEncoding::compose(ProcIdlePageType::PteIdle as u8, 0));
+        // Kernel format: [0xa0] [64-bit address 8 bytes BE]
+        // Reference: etmemd_scan.c get_address_from_buf()
+        // Address 0x10000 = 65536 as 64-bit big-endian
+        // Format: [0xa0] [8 bytes address BE] [page entry]
+        let data = vec![
+            PipEncoding::SET_HVA,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x01,
+            0x00,
+            0x00, // 64-bit address = 0x10000 (big-endian) - ONLY 8 bytes
+            PipEncoding::compose(ProcIdlePageType::PteIdle as u8, 0),
+        ];
 
         let result = ctrl.decode_pip_data(&data, 0).unwrap();
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].address, 0x10000);
+        assert_eq!(result[0].page_type, ProcIdlePageType::PteIdle);
+    }
+
+    #[test]
+    fn test_decode_pip_data_kernel_format() {
+        let mut ctrl = PageIdleCtrl::default();
+
+        // Test with kernel-like data: SET_HVA followed by 64-bit address
+        // Format: [0xa0] [8-byte address BE] [page entry]
+        // Address 0x10000 (65536) as 64-bit big-endian
+        let data = vec![
+            PipEncoding::SET_HVA,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x01,
+            0x00,
+            0x00, // 64-bit address = 0x10000 (big-endian) - 8 bytes
+            PipEncoding::compose(ProcIdlePageType::PteAccessed as u8, 0), // PTE_ACCESSED count=1
+        ];
+
+        let result = ctrl.decode_pip_data(&data, 0).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].address, 0x10000);
+        assert_eq!(result[0].page_type, ProcIdlePageType::PteAccessed);
+        assert_eq!(result[0].count, 1);
+    }
+
+    #[test]
+    fn test_decode_pip_data_high_address() {
+        let mut ctrl = PageIdleCtrl::default();
+
+        // Test 64-bit address with high bits set
+        // Format matches etmemd_scan.c: [0xa0] [8-byte address BE]
+        // Address 0xffffa2f90000 as 64-bit big-endian
+        let data = vec![
+            PipEncoding::SET_HVA,
+            0x00,
+            0x00,
+            0xff,
+            0xff,
+            0xa2,
+            0xf9,
+            0x00,
+            0x00, // 64-bit address = 0xffffa2f90000 (big-endian)
+            PipEncoding::compose(ProcIdlePageType::PteIdle as u8, 0),
+        ];
+
+        let result = ctrl.decode_pip_data(&data, 0).unwrap();
+        assert_eq!(result.len(), 1);
+        // Address should match exactly
+        assert_eq!(result[0].address, 0xffff_a2f9_0000);
         assert_eq!(result[0].page_type, ProcIdlePageType::PteIdle);
     }
 
