@@ -84,6 +84,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         end_addr
     );
 
+    // Disable transparent huge pages for 4KB page granularity
+    unsafe {
+        libc::madvise(ptr, ALLOC_SIZE, libc::MADV_NOHUGEPAGE);
+    }
+    println!("Disabled transparent huge pages for 4KB granularity");
+
     // Touch all pages to ensure they're mapped
     unsafe {
         std::ptr::write_bytes(ptr, 0xAB, ALLOC_SIZE);
@@ -116,8 +122,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Second scan - pages not accessed since first scan show as idle
     let pages = scan_session.read_range(range)?;
-    let idle_pages: Vec<u64> = pages.iter().filter(|p| p.is_idle()).map(|p| p.address).collect();
-    println!("Found {} idle pages out of {} total", idle_pages.len(), pages.len());
+
+    // Expand idle page regions into individual 4KB page addresses
+    // The scan may return consolidated regions (e.g., 64KB or 2MB chunks)
+    let mut idle_pages = Vec::new();
+    for page in &pages {
+        if page.is_idle() {
+            let page_size = page.page_type.page_size();
+            let num_4kb_pages = (page_size * page.count as u64) / 4096;
+            for i in 0..num_4kb_pages {
+                idle_pages.push(page.address + (i * 4096));
+            }
+        }
+    }
+    println!("Found {} idle regions, expanded to {} 4KB pages", pages.iter().filter(|p| p.is_idle()).count(), idle_pages.len());
 
     // Step 2: Create swap session and swap out idle pages
     let swap_config = SwapConfig::default();
@@ -125,22 +143,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nSwapping out {} idle pages...", idle_pages.len());
 
-    // Add idle page addresses and swap out
-    let mut added = 0;
-    for addr in &idle_pages {
-        if session.add_address(*addr).is_ok() {
-            added += 1;
+    // Multiple passes are needed for reliable swap
+    // (kernel may not swap all pages on first attempt)
+    let mut total_added = 0;
+    for pass in 0..3 {
+        let mut added = 0;
+        for addr in &idle_pages {
+            if session.add_address(*addr).is_ok() {
+                added += 1;
+            }
         }
-    }
-    println!("Added {} pages to swap session", added);
+        let flushed = session.flush()?;
+        println!("Pass {}: Added {} pages, flushed {}", pass + 1, added, flushed);
+        total_added += added;
 
-    // Flush to swap pages (note: auto-flush may have already occurred)
-    let flushed = session.flush()?;
-    println!("Final flush: {} pages", flushed);
-    println!("Total pages sent to kernel: {}", added);
+        // Wait for kernel to process
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+    println!("Total pages sent to kernel: {}", total_added);
 
     // Wait for swap to complete
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     // Get final swap stats
     let final_swap = get_swap_for_range(start_addr, end_addr);
