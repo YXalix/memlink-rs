@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::UbfwctlError;
-use crate::ioctl::{FwctlDevice, FWCTL_DEV_DIR, FWCTL_DEV_PREFIX};
+use crate::ioctl::{FWCTL_DEV_DIR, FWCTL_DEV_PREFIX, FwctlDevice};
 use crate::types::{FwctlDeviceInfo, IoDieInfo};
 
 /// Sysfs path for fwctl class devices
@@ -51,11 +51,7 @@ impl DiscoveredDevice {
     /// * `io_die_info` - IO die information with port details
     /// * `entity_name` - Entity name from sysfs
     #[must_use]
-pub const fn new(
-        info: FwctlDeviceInfo,
-        io_die_info: IoDieInfo,
-        entity_name: String,
-    ) -> Self {
+    pub const fn new(info: FwctlDeviceInfo, io_die_info: IoDieInfo, entity_name: String) -> Self {
         Self {
             info,
             io_die_info,
@@ -65,37 +61,37 @@ pub const fn new(
 
     /// Get the device path
     #[must_use]
-pub fn path(&self) -> &str {
+    pub fn path(&self) -> &str {
         &self.info.path
     }
 
     /// Get the chip ID
     #[must_use]
-pub const fn chip_id(&self) -> u32 {
+    pub const fn chip_id(&self) -> u32 {
         self.info.chip_id
     }
 
     /// Get the die ID
     #[must_use]
-pub const fn die_id(&self) -> u32 {
+    pub const fn die_id(&self) -> u32 {
         self.info.die_id
     }
 
     /// Get the entity name
     #[must_use]
-pub fn entity_name(&self) -> &str {
+    pub fn entity_name(&self) -> &str {
         &self.entity_name
     }
 
     /// Get the number of ports
     #[must_use]
-pub const fn port_count(&self) -> u32 {
+    pub const fn port_count(&self) -> u32 {
         self.io_die_info.port_count
     }
 
     /// Get port information
     #[must_use]
-pub fn ports(&self) -> &[crate::types::PortInfo] {
+    pub fn ports(&self) -> &[crate::types::PortInfo] {
         &self.io_die_info.ports
     }
 }
@@ -149,8 +145,7 @@ pub fn scan_devices() -> Result<Vec<DiscoveredDevice>, UbfwctlError> {
         }
 
         // Check if this is a ubase device
-        let Some(entity_name) = check_ubase_device(&name_str)
-        else {
+        let Some(entity_name) = check_ubase_device(&name_str) else {
             continue;
         };
 
@@ -177,7 +172,8 @@ pub fn scan_devices() -> Result<Vec<DiscoveredDevice>, UbfwctlError> {
             }
         };
 
-        let device_info = FwctlDeviceInfo::new(chip_id, die_id, format!("{FWCTL_DEV_DIR}/{name_str}"));
+        let device_info =
+            FwctlDeviceInfo::new(chip_id, die_id, format!("{FWCTL_DEV_DIR}/{name_str}"));
 
         devices.push(DiscoveredDevice::new(device_info, io_die_info, entity_name));
     }
@@ -255,9 +251,9 @@ fn check_ubase_device(device_name: &str) -> Option<String> {
 /// # Errors
 /// `UbfwctlError::InvalidResponse` if the device name format is invalid
 fn parse_device_id(device_name: &str) -> Result<(u32, u32), UbfwctlError> {
-    let num_str = device_name
-        .strip_prefix(FWCTL_DEV_PREFIX)
-        .ok_or_else(|| UbfwctlError::InvalidResponse(format!("Invalid device name: {device_name}")))?;
+    let num_str = device_name.strip_prefix(FWCTL_DEV_PREFIX).ok_or_else(|| {
+        UbfwctlError::InvalidResponse(format!("Invalid device name: {device_name}"))
+    })?;
 
     // Parse as hexadecimal (e.g., "00010000" -> chip 1, die 0)
     let combined_id = u32::from_str_radix(num_str, 16)

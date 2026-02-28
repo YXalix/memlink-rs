@@ -18,11 +18,7 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// Memory ID on success, `OBMM_INVALID_MEMID` on failure
-    pub fn obmm_export(
-        length: *const usize,
-        flags: u64,
-        desc: *mut c_void,
-    ) -> MemId;
+    pub fn obmm_export(length: *const usize, flags: u64, desc: *mut c_void) -> MemId;
 
     /// Unexport previously exported memory region
     ///
@@ -44,12 +40,7 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// Memory ID on success, `OBMM_INVALID_MEMID` on failure
-    pub fn obmm_import(
-        desc: *const c_void,
-        flags: u64,
-        base_dist: i32,
-        numa: *mut i32,
-    ) -> MemId;
+    pub fn obmm_import(desc: *const c_void, flags: u64, base_dist: i32, numa: *mut i32) -> MemId;
 
     /// Unimport previously imported memory region
     ///
@@ -72,10 +63,7 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// 0 on success, -1 on failure
-    pub fn obmm_preimport(
-        info: *mut ObmmPreimportInfo,
-        flags: u64,
-    ) -> i32;
+    pub fn obmm_preimport(info: *mut ObmmPreimportInfo, flags: u64) -> i32;
 
     /// Unpreimport previously preimported memory region
     ///
@@ -85,10 +73,7 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// 0 on success, -1 on failure
-    pub fn obmm_unpreimport(
-        info: *const ObmmPreimportInfo,
-        flags: u64,
-    ) -> i32;
+    pub fn obmm_unpreimport(info: *const ObmmPreimportInfo, flags: u64) -> i32;
 
     /// Export user address space
     ///
@@ -125,12 +110,7 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// 0 on success, -1 on failure
-    pub fn obmm_set_ownership(
-        fd: i32,
-        start: *mut c_void,
-        end: *mut c_void,
-        prot: i32,
-    ) -> i32;
+    pub fn obmm_set_ownership(fd: i32, start: *mut c_void, end: *mut c_void, prot: i32) -> i32;
 
     /* debug interface */
 
@@ -143,11 +123,7 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// 0 on success, -1 on failure
-    pub fn obmm_query_memid_by_pa(
-        pa: u64,
-        id: *mut MemId,
-        offset: *mut u64,
-    ) -> i32;
+    pub fn obmm_query_memid_by_pa(pa: u64, id: *mut MemId, offset: *mut u64) -> i32;
 
     /// Query physical address by memory ID and offset
     ///
@@ -158,9 +134,5 @@ unsafe extern "C" {
     ///
     /// # Returns
     /// 0 on success, -1 on failure
-    pub fn obmm_query_pa_by_memid(
-        id: MemId,
-        offset: u64,
-        pa: *mut u64,
-    ) -> i32;
+    pub fn obmm_query_pa_by_memid(id: MemId, offset: u64, pa: *mut u64) -> i32;
 }

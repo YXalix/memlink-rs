@@ -6,9 +6,9 @@
 #[cfg(feature = "native")]
 use std::ffi::c_void;
 
-use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::error::ToObmmResult;
+use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::sys;
 
@@ -86,14 +86,8 @@ pub fn set_ownership(_fd: i32, _start: u64, _end: u64, _prot: i32) -> Result<()>
 #[inline]
 #[allow(clippy::as_conversions)]
 pub fn set_ownership(fd: i32, start: u64, end: u64, prot: i32) -> Result<()> {
-    let ret = unsafe {
-        sys::obmm_set_ownership(
-            fd,
-            start as *mut c_void,
-            end as *mut c_void,
-            prot,
-        )
-    };
+    let ret =
+        unsafe { sys::obmm_set_ownership(fd, start as *mut c_void, end as *mut c_void, prot) };
     ret.to_obmm_result(ObmmError::SetOwnershipFailed)
 }
 
@@ -209,9 +203,7 @@ mod tests {
 
     #[test]
     fn test_ownership_builder() {
-        let setter = OwnershipSetter::new(3)
-            .range(0x1000, 0x2000)
-            .read_write();
+        let setter = OwnershipSetter::new(3).range(0x1000, 0x2000).read_write();
 
         assert_eq!(setter.fd, 3);
         assert_eq!(setter.start, Some(0x1000));
@@ -221,15 +213,11 @@ mod tests {
 
     #[test]
     fn test_ownership_builder_chaining() {
-        let setter = OwnershipSetter::new(5)
-            .range(0x1000, 0x2000)
-            .read_only();
+        let setter = OwnershipSetter::new(5).range(0x1000, 0x2000).read_only();
 
         assert_eq!(setter.prot, prot::READ);
 
-        let setternew = OwnershipSetter::new(5)
-            .range(0x1000, 0x2000)
-            .no_access();
+        let setternew = OwnershipSetter::new(5).range(0x1000, 0x2000).no_access();
 
         assert_eq!(setternew.prot, prot::NONE);
     }

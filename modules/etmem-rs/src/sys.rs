@@ -33,8 +33,7 @@ pub const SYS_ETMEM_SWAP_ENABLE: &str = "/sys/kernel/mm/swap/kernel_swap_enable"
 /// - bit 30: _IOW (write to kernel)
 ///
 /// IOCTL command to add scan flags
-pub const IDLE_SCAN_ADD_FLAGS: u64 =
-    ((IDLE_SCAN_MAGIC as u64) << 8) | (4u64 << 16) | (1u64 << 30);
+pub const IDLE_SCAN_ADD_FLAGS: u64 = ((IDLE_SCAN_MAGIC as u64) << 8) | (4u64 << 16) | (1u64 << 30);
 /// IOCTL command to remove scan flags
 pub const IDLE_SCAN_REMOVE_FLAGS: u64 =
     ((IDLE_SCAN_MAGIC as u64) << 8) | (0x1u64) | (4u64 << 16) | (1u64 << 30);
@@ -107,14 +106,8 @@ impl ProcfsHandle {
     /// This function performs raw system calls.
     /// The buffer must be valid and have the correct size.
     pub unsafe fn read_at(&self, buf: &mut [u8], offset: off_t) -> std::io::Result<ssize_t> {
-        let result = unsafe {
-            libc::pread(
-                self.fd,
-                buf.as_mut_ptr() as *mut c_void,
-                buf.len(),
-                offset,
-            )
-        };
+        let result =
+            unsafe { libc::pread(self.fd, buf.as_mut_ptr() as *mut c_void, buf.len(), offset) };
         if result < 0 {
             Err(std::io::Error::last_os_error())
         } else {

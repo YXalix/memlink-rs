@@ -6,12 +6,12 @@
 #[cfg(feature = "native")]
 use std::ffi::c_void;
 
-use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::error::ToObmmResult;
+use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::sys;
-use crate::types::{MemId, ObmmExportFlags, ObmmMemDesc, ObmmUnexportFlags, OBMM_INVALID_MEMID};
+use crate::types::{MemId, OBMM_INVALID_MEMID, ObmmExportFlags, ObmmMemDesc, ObmmUnexportFlags};
 
 /// Export memory region
 ///
@@ -87,13 +87,8 @@ pub fn mem_export<T: Default>(
 ) -> anyhow::Result<(MemId, ObmmMemDesc<T>)> {
     let mut desc = ObmmMemDesc::<T>::default();
     let desc_ptr = std::ptr::addr_of_mut!(desc);
-    let memid = unsafe {
-        sys::obmm_export(
-            length.as_ptr(),
-            flags.bits(),
-            desc_ptr.cast::<c_void>(),
-        )
-    };
+    let memid =
+        unsafe { sys::obmm_export(length.as_ptr(), flags.bits(), desc_ptr.cast::<c_void>()) };
     if memid == OBMM_INVALID_MEMID {
         Err(anyhow::anyhow!("Failed to export memory"))
     } else {
@@ -198,7 +193,9 @@ pub fn export_useraddr<T: Default>(
     let mut desc = ObmmMemDesc::<T>::default();
     let memid = 1;
     desc.addr = 0x7fff_fc00_0000;
-    desc.length = length.try_into().map_err(|_e| ObmmError::InvalidInput("length too large"))?;
+    desc.length = length
+        .try_into()
+        .map_err(|_e| ObmmError::InvalidInput("length too large"))?;
     if memid == OBMM_INVALID_MEMID {
         Err(ObmmError::InvalidMemId)
     } else {

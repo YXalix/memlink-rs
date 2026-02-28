@@ -75,8 +75,8 @@ pub mod ioctl;
 pub mod types;
 
 pub use commands::list::{format_device_list, list_devices, list_devices_raw};
-pub use commands::mar_perf::{mar_perf_measure, MarPerfCommand};
-pub use device::{scan_devices, device_count, list_device_paths, DiscoveredDevice};
+pub use commands::mar_perf::{MarPerfCommand, mar_perf_measure};
+pub use device::{DiscoveredDevice, device_count, list_device_paths, scan_devices};
 pub use error::UbfwctlError;
 pub use ioctl::FwctlDevice;
 pub use types::{FwctlDeviceInfo, IoDieInfo, MarPerfConfig, MarPerfQuery, MarPerfResult, PortInfo};

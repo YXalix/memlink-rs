@@ -4,7 +4,6 @@ use std::{
     time::Duration,
 };
 
-
 use anyhow::{Context, Result, anyhow, bail};
 use thiserror::Error;
 
@@ -44,14 +43,15 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Result<Worker, ThreadPoolError> {
-
+    fn new(
+        id: usize,
+        receiver: Arc<Mutex<mpsc::Receiver<Job>>>,
+    ) -> Result<Worker, ThreadPoolError> {
         let thread_builder = thread::Builder::new();
         let thread = thread_builder
             .name(format!("worker-{}", id))
-            .spawn(move || {
-                Self::run_worker(id, receiver)
-            }).map_err(|e| ThreadPoolError::ThreadCreationFailed(e.to_string()))?;
+            .spawn(move || Self::run_worker(id, receiver))
+            .map_err(|e| ThreadPoolError::ThreadCreationFailed(e.to_string()))?;
 
         Ok(Worker { _id: id, thread })
     }
@@ -59,9 +59,11 @@ impl Worker {
     fn run_worker(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) {
         loop {
             let job_result = || -> Result<(), anyhow::Error> {
-                let lock_result = receiver.lock()
+                let lock_result = receiver
+                    .lock()
                     .map_err(|e| anyhow!("Failed to lock mutex: {}", e))?;
-                let job = lock_result.recv_timeout(Duration::from_millis(100))
+                let job = lock_result
+                    .recv_timeout(Duration::from_millis(100))
                     .context("Failed to receive job")?;
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     job();
@@ -81,12 +83,16 @@ impl Worker {
                 Ok(_) => continue,
                 Err(e) => {
                     // 检查错误类型
-                    if e.to_string().contains("disconnected") || 
-                       e.to_string().contains("Failed to receive job") {
+                    if e.to_string().contains("disconnected")
+                        || e.to_string().contains("Failed to receive job")
+                    {
                         println!("Worker {} disconnected; shutting down.", id);
                         break;
                     } else if e.to_string().contains("poisoned") {
-                        eprintln!("Worker {} detected a poisoned mutex, attempting to recover", id);
+                        eprintln!(
+                            "Worker {} detected a poisoned mutex, attempting to recover",
+                            id
+                        );
                         // 继续尝试
                         continue;
                     } else {
@@ -99,7 +105,6 @@ impl Worker {
         }
     }
 }
-
 
 impl ThreadPool {
     pub fn new(size: usize) -> Result<ThreadPool> {
@@ -126,8 +131,8 @@ impl ThreadPool {
         if workers.is_empty() {
             bail!("Failed to create any workers");
         }
-        Ok(ThreadPool { 
-            workers, 
+        Ok(ThreadPool {
+            workers,
             sender: Some(sender),
             is_shutdown: false,
         })
@@ -148,7 +153,7 @@ impl ThreadPool {
         if self.is_shutdown {
             bail!(ThreadPoolError::PoolShutdown);
         }
-        
+
         let job = Box::new(f);
 
         self.sender
@@ -156,7 +161,7 @@ impl ThreadPool {
             .ok_or_else(|| anyhow!(ThreadPoolError::PoolShutdown))?
             .send(job)
             .map_err(|e| anyhow!(ThreadPoolError::TaskSubmissionFailed(e.to_string())))?;
-            
+
         Ok(())
     }
 
@@ -164,15 +169,15 @@ impl ThreadPool {
         if self.is_shutdown {
             return Ok(());
         }
-        
+
         self.is_shutdown = true;
-        
+
         // 丢弃发送者，这样workers会在处理完所有任务后退出
         drop(self.sender.take());
-        
+
         // 收集所有join错误
         let mut errors = Vec::new();
-        
+
         for worker in self.workers.drain(..) {
             match worker.thread.join() {
                 Ok(()) => (),
@@ -184,12 +189,12 @@ impl ThreadPool {
                     } else {
                         "Unknown panic payload".to_string()
                     };
-                    
+
                     errors.push(anyhow!(ThreadPoolError::WorkerPanicked(error_msg)));
                 }
             }
         }
-        
+
         if !errors.is_empty() {
             for error in &errors[1..] {
                 eprintln!("Additional error during shutdown: {}", error);
@@ -198,7 +203,7 @@ impl ThreadPool {
                 errors[0].to_string(),
             )));
         }
-        
+
         Ok(())
     }
 
@@ -222,21 +227,19 @@ impl ThreadPool {
     where
         F: FnOnce() + Send + 'static + Clone,
     {
-        tasks.into_iter()
-            .map(|task| self.execute(task))
-            .collect()
+        tasks.into_iter().map(|task| self.execute(task)).collect()
     }
 }
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
         if !self.is_shutdown
-            && let Err(e) = self.shutdown() {
-                eprintln!("Error during thread pool drop: {}", e);
-            }
+            && let Err(e) = self.shutdown()
+        {
+            eprintln!("Error during thread pool drop: {}", e);
+        }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -248,11 +251,16 @@ mod tests {
         let pool = ThreadPool::new(4)?;
         assert_eq!(pool.size(), 4);
         assert!(!pool.is_shutdown());
-        
+
         let result = ThreadPool::new(0);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Thread pool size must be greater than 0"));
-        
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Thread pool size must be greater than 0")
+        );
+
         Ok(())
     }
 
@@ -260,7 +268,7 @@ mod tests {
     fn test_basic_execution() -> Result<()> {
         let pool = ThreadPool::new(2)?;
         let counter = Arc::new(AtomicUsize::new(0));
-        
+
         for _ in 0..5 {
             let counter = Arc::clone(&counter);
             pool.execute(move || {
@@ -268,24 +276,24 @@ mod tests {
                 thread::sleep(Duration::from_millis(10));
             })?;
         }
-        
+
         thread::sleep(Duration::from_millis(100));
         assert_eq!(counter.load(Ordering::SeqCst), 5);
-        
+
         Ok(())
     }
 
     #[test]
     fn test_execute_after_shutdown() -> Result<()> {
         let mut pool = ThreadPool::new(2)?;
-        
+
         pool.shutdown()?;
         assert!(pool.is_shutdown());
-        
+
         let result = pool.execute(|| println!("This should fail"));
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("shutdown"));
-        
+
         Ok(())
     }
 
@@ -294,7 +302,7 @@ mod tests {
         let pool = ThreadPool::new(2)?;
         let (tx, rx) = mpsc::channel();
         let completed = Arc::new(AtomicUsize::new(0));
-        
+
         for i in 0..3 {
             let tx = tx.clone();
             let completed = Arc::clone(&completed);
@@ -304,14 +312,14 @@ mod tests {
                 tx.send(i).unwrap();
             })?;
         }
-        
+
         drop(pool); // 触发关闭
-        
+
         let mut results = Vec::new();
         for _ in 0..3 {
             results.push(rx.recv()?);
         }
-        
+
         results.sort();
         assert_eq!(results, vec![0, 1, 2]);
         Ok(())
@@ -321,35 +329,35 @@ mod tests {
     fn test_execute_with_fallback() -> Result<()> {
         let pool = ThreadPool::new(2)?;
         let fallback_called = Arc::new(AtomicUsize::new(0));
-        
+
         // 正常执行
         let fallback_called_clone = Arc::clone(&fallback_called);
         pool.execute_with_fallback(
             || println!("Task executed"),
             move |_| {
                 fallback_called_clone.fetch_add(1, Ordering::SeqCst);
-            }
+            },
         )?;
-        
+
         assert_eq!(fallback_called.load(Ordering::SeqCst), 0);
-        
+
         // 测试关闭后的回退
         let mut pool = ThreadPool::new(1)?;
         pool.shutdown()?;
-        
+
         let fallback_called = Arc::new(AtomicUsize::new(0));
         let fallback_called_clone = Arc::clone(&fallback_called);
-        
+
         let result = pool.execute_with_fallback(
             || {},
             move |_| {
                 fallback_called_clone.fetch_add(1, Ordering::SeqCst);
-            }
+            },
         );
-        
+
         assert!(result.is_err());
         assert_eq!(fallback_called.load(Ordering::SeqCst), 1);
-        
+
         Ok(())
     }
 
@@ -357,19 +365,19 @@ mod tests {
     fn test_panic_handling() -> Result<()> {
         let pool = ThreadPool::new(2)?;
         let (tx, rx) = mpsc::channel();
-        
+
         // 第一个任务会panic
         pool.execute(|| {
             panic!("Intentional panic");
         })?;
-        
+
         // 第二个任务应该仍然能执行
         pool.execute(move || {
             tx.send(42).unwrap();
         })?;
-        
+
         thread::sleep(Duration::from_millis(100));
-        
+
         assert_eq!(rx.try_recv()?, 42);
         Ok(())
     }
@@ -379,33 +387,34 @@ mod tests {
         let pool = Arc::new(ThreadPool::new(4)?);
         let counter = Arc::new(AtomicUsize::new(0));
         let mut handles = Vec::new();
-        
+
         for _ in 0..10 {
             let counter = Arc::clone(&counter);
             let pool = Arc::clone(&pool);
             let handle = thread::spawn(move || {
                 pool.execute(move || {
                     counter.fetch_add(1, Ordering::SeqCst);
-                }).unwrap();
+                })
+                .unwrap();
             });
             handles.push(handle);
         }
-        
+
         for handle in handles {
             handle.join().unwrap();
         }
-        
+
         thread::sleep(Duration::from_millis(100));
         assert_eq!(counter.load(Ordering::SeqCst), 10);
-        
+
         Ok(())
     }
-    
+
     #[test]
     fn test_execute_batch() -> Result<()> {
         let pool = ThreadPool::new(3)?;
         let counter = Arc::new(AtomicUsize::new(0));
-        
+
         let tasks: Vec<_> = (0..6)
             .map(|_| {
                 let counter = Arc::clone(&counter);
@@ -415,23 +424,23 @@ mod tests {
                 }
             })
             .collect();
-        
+
         let results = pool.execute_batch(tasks);
-        
+
         // 所有任务都应该成功提交
         assert_eq!(results.len(), 6);
         assert!(results.iter().all(|r| r.is_ok()));
-        
+
         thread::sleep(Duration::from_millis(200));
         assert_eq!(counter.load(Ordering::SeqCst), 6);
-        
+
         Ok(())
     }
-    
+
     #[test]
     fn test_thread_names() -> Result<()> {
         let pool = ThreadPool::new(2)?;
-        
+
         // 验证线程名可以通过系统工具查看
         pool.execute(|| {
             let binding = thread::current();
@@ -439,7 +448,7 @@ mod tests {
             println!("Thread name: {}", name);
             assert!(name.starts_with("worker-"));
         })?;
-        
+
         thread::sleep(Duration::from_millis(50));
         Ok(())
     }

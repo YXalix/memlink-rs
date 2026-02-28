@@ -141,15 +141,14 @@ impl IdlePageStats {
 }
 
 /// Group pages by their type
-pub fn group_by_type(pages: &[IdlePageInfo]) -> std::collections::HashMap<ProcIdlePageType, Vec<IdlePageInfo>> {
+pub fn group_by_type(
+    pages: &[IdlePageInfo],
+) -> std::collections::HashMap<ProcIdlePageType, Vec<IdlePageInfo>> {
     let mut groups: std::collections::HashMap<ProcIdlePageType, Vec<IdlePageInfo>> =
         std::collections::HashMap::new();
 
     for page in pages {
-        groups
-            .entry(page.page_type)
-            .or_default()
-            .push(*page);
+        groups.entry(page.page_type).or_default().push(*page);
     }
 
     groups

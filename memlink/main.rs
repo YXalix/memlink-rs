@@ -7,7 +7,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use log::info;
-use obmm_rs::{mem_export, ObmmExportFlags, UbPrivData, MAX_NUMA_NODES};
+use obmm_rs::{MAX_NUMA_NODES, ObmmExportFlags, UbPrivData, mem_export};
 
 /// Memlink CLI arguments
 #[derive(Parser, Debug)]
@@ -111,7 +111,9 @@ fn main() -> anyhow::Result<()> {
             port,
             time,
         } => {
-            info!("Running mar_perf measurement on chip {chip_id}, die {die_id}, port {port}, time: {time}ms");
+            info!(
+                "Running mar_perf measurement on chip {chip_id}, die {die_id}, port {port}, time: {time}ms"
+            );
             run_mar_perf(chip_id, die_id, port, time)?;
         }
         Commands::Etmem { action } => {
@@ -153,9 +155,7 @@ fn run_mar_perf(chip_id: u32, die_id: u32, port: u32, time: u32) -> anyhow::Resu
 
 /// Handle ETMEM subcommands
 fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
-    use etmem_rs::{
-        IdlePageScanner, PageSwapper, ScanConfig, ScanFlags, SwapcacheConfig,
-    };
+    use etmem_rs::{IdlePageScanner, PageSwapper, ScanConfig, ScanFlags, SwapcacheConfig};
 
     match action {
         EtmemCommands::Scan {
@@ -164,12 +164,14 @@ fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
             dirty,
             idle_only,
         } => {
-            let pid = pid.unwrap_or_else(|| std::process::id());
+            let pid = pid.unwrap_or_else(std::process::id);
             println!("Scanning process {pid} for memory pages...");
 
             // Check if ETMEM is available
             if !etmem_rs::is_available() {
-                anyhow::bail!("ETMEM is not available. Check kernel configuration (CONFIG_ETMEM=y).");
+                anyhow::bail!(
+                    "ETMEM is not available. Check kernel configuration (CONFIG_ETMEM=y)."
+                );
             }
 
             // Build scan configuration
@@ -195,7 +197,10 @@ fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
 
             println!("\nFound {} memory regions:", filtered_pages.len());
             println!("{:-^60}", "");
-            println!("{:>16}  {:<15}  {:<10}  {:<12}", "Address", "Type", "Count", "Size");
+            println!(
+                "{:>16}  {:<15}  {:<10}  {:<12}",
+                "Address", "Type", "Count", "Size"
+            );
             println!("{:-^60}", "");
 
             let mut total_bytes = 0u64;
@@ -212,13 +217,25 @@ fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
             }
 
             println!("{:-^60}", "");
-            println!("Total: {} bytes ({})", total_bytes, etmem_rs::format_bytes(total_bytes));
+            println!(
+                "Total: {} bytes ({})",
+                total_bytes,
+                etmem_rs::format_bytes(total_bytes)
+            );
 
             // Show statistics
             let stats = etmem_rs::IdlePageStats::from_pages(&filtered_pages);
             println!("\nStatistics:");
-            println!("  Idle pages:     {} ({})", stats.idle_pages, etmem_rs::format_bytes(stats.idle_bytes));
-            println!("  Accessed pages: {} ({})", stats.accessed_pages, etmem_rs::format_bytes(stats.accessed_bytes));
+            println!(
+                "  Idle pages:     {} ({})",
+                stats.idle_pages,
+                etmem_rs::format_bytes(stats.idle_bytes)
+            );
+            println!(
+                "  Accessed pages: {} ({})",
+                stats.accessed_pages,
+                etmem_rs::format_bytes(stats.accessed_bytes)
+            );
             println!("  Huge pages:     {}", stats.huge_pages);
             println!("  Idle ratio:     {:.1}%", stats.idle_ratio() * 100.0);
         }
@@ -227,7 +244,7 @@ fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
                 anyhow::bail!("No addresses provided. Use --addrs to specify addresses to swap.");
             }
 
-            let pid = pid.unwrap_or_else(|| std::process::id());
+            let pid = pid.unwrap_or_else(std::process::id);
             println!("Swapping pages in process {pid}...");
 
             // Parse addresses
@@ -250,17 +267,18 @@ fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
             status,
         } => {
             if enable {
-                SwapcacheConfig::enable()
-                    .with_context(|| "Failed to enable kernel swap")?;
+                SwapcacheConfig::enable().with_context(|| "Failed to enable kernel swap")?;
                 println!("Kernel swap enabled");
             } else if disable {
-                SwapcacheConfig::disable()
-                    .with_context(|| "Failed to disable kernel swap")?;
+                SwapcacheConfig::disable().with_context(|| "Failed to disable kernel swap")?;
                 println!("Kernel swap disabled");
             } else if status || (!enable && !disable) {
                 let enabled = SwapcacheConfig::is_enabled()
                     .with_context(|| "Failed to check kernel swap status")?;
-                println!("Kernel swap status: {}", if enabled { "enabled" } else { "disabled" });
+                println!(
+                    "Kernel swap status: {}",
+                    if enabled { "enabled" } else { "disabled" }
+                );
 
                 // Also check ETMEM availability
                 println!("ETMEM available: {}", etmem_rs::is_available());
@@ -274,8 +292,6 @@ fn handle_etmem_command(action: EtmemCommands) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_etmem_availability() {
         // Just check that the function works

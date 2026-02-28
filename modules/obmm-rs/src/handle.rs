@@ -23,8 +23,8 @@ use crate::error::{ObmmError, Result};
 use crate::export::{export_useraddr, mem_export, mem_unexport};
 use crate::import::{mem_import, mem_unimport};
 use crate::types::{
-    ImportResult, MemId, ObmmExportFlags, ObmmMemDesc, ObmmUnexportFlags, UbPrivData,
-    OBMM_INVALID_MEMID,
+    ImportResult, MemId, OBMM_INVALID_MEMID, ObmmExportFlags, ObmmMemDesc, ObmmUnexportFlags,
+    UbPrivData,
 };
 
 /// Handle for exported memory regions
@@ -65,8 +65,8 @@ impl<T: Default> ExportedMemory<T> {
     /// ```
     #[inline]
     pub fn export(lengths: &[usize], flags: ObmmExportFlags) -> Result<Self> {
-        let (mem_id, desc) = mem_export::<T>(lengths, flags)
-            .map_err(|_e| ObmmError::ExportFailed(-1))?;
+        let (mem_id, desc) =
+            mem_export::<T>(lengths, flags).map_err(|_e| ObmmError::ExportFailed(-1))?;
 
         if mem_id == OBMM_INVALID_MEMID {
             return Err(ObmmError::ExportFailed(-1));
@@ -93,7 +93,12 @@ impl<T: Default> ExportedMemory<T> {
     /// # Errors
     /// Returns `ObmmError::ExportFailed` if the export operation fails
     #[inline]
-    pub fn export_useraddr(pid: i32, va: u64, length: usize, flags: ObmmExportFlags) -> Result<Self> {
+    pub fn export_useraddr(
+        pid: i32,
+        va: u64,
+        length: usize,
+        flags: ObmmExportFlags,
+    ) -> Result<Self> {
         let (mem_id, desc) = export_useraddr::<T>(pid, va, length, flags)?;
 
         if mem_id == OBMM_INVALID_MEMID {
@@ -273,7 +278,8 @@ mod tests {
             panic!("Failed to set length for NUMA node 0");
         }
 
-        let memory: Result<ExportedMemory<UbPrivData>> = ExportedMemory::export(&lengths, ObmmExportFlags::ALLOWMMAP);
+        let memory: Result<ExportedMemory<UbPrivData>> =
+            ExportedMemory::export(&lengths, ObmmExportFlags::ALLOWMMAP);
 
         match memory {
             Ok(mem) => {
@@ -315,7 +321,8 @@ mod tests {
             panic!("Failed to set length for NUMA node 0");
         }
 
-        if let Ok(mem) = ExportedMemory::<UbPrivData>::export(&lengths, ObmmExportFlags::ALLOWMMAP) {
+        if let Ok(mem) = ExportedMemory::<UbPrivData>::export(&lengths, ObmmExportFlags::ALLOWMMAP)
+        {
             let (mem_id, _desc) = mem.release();
             assert!(mem_id != OBMM_INVALID_MEMID);
             // Caller is now responsible for unexporting

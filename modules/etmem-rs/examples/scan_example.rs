@@ -81,7 +81,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if ptr == libc::MAP_FAILED {
         return Err(Box::new(std::io::Error::last_os_error()));
     }
-    println!("Allocated {} MB of memory at {:p}", ALLOC_SIZE / 1024 / 1024, ptr);
+    println!(
+        "Allocated {} MB of memory at {:p}",
+        ALLOC_SIZE / 1024 / 1024,
+        ptr
+    );
 
     // Disable transparent huge pages if requested (for 4KB page granularity)
     if disable_huge_pages {
@@ -106,7 +110,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         end: (ptr as u64) + (ALLOC_SIZE as u64),
     };
 
-    println!("Scanning memory range: 0x{:x} - 0x{:x}", range.start, range.end);
+    println!(
+        "Scanning memory range: 0x{:x} - 0x{:x}",
+        range.start, range.end
+    );
 
     // Read page information from the range
     let pages = session.read_range(range)?;
@@ -131,7 +138,10 @@ fn print_scan_results(pages: &[IdlePageInfo]) {
     }
 
     println!("\nScan Results:");
-    println!("{:<20} {:<16} {:<12} {:<16}", "Address", "Type", "Count", "Size");
+    println!(
+        "{:<20} {:<16} {:<12} {:<16}",
+        "Address", "Type", "Count", "Size"
+    );
     println!("{}", "-".repeat(70));
 
     let mut total_idle = 0u64;

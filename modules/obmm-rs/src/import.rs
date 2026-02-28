@@ -6,14 +6,14 @@
 #[cfg(feature = "native")]
 use std::ffi::c_void;
 
-use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::error::ToObmmResult;
+use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::sys;
 use crate::types::{
-    ImportResult, MemId, ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags, ObmmPreimportInfo,
-    UbPrivData, OBMM_INVALID_MEMID,
+    ImportResult, MemId, OBMM_INVALID_MEMID, ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags,
+    ObmmPreimportInfo, UbPrivData,
 };
 
 /// Import memory region
@@ -48,11 +48,7 @@ use crate::types::{
 /// ```
 #[cfg(not(feature = "native"))]
 #[inline]
-pub fn mem_import(
-    _: &ObmmMemDesc<UbPrivData>,
-    _: ObmmExportFlags,
-    _: i32,
-) -> Result<ImportResult> {
+pub fn mem_import(_: &ObmmMemDesc<UbPrivData>, _: ObmmExportFlags, _: i32) -> Result<ImportResult> {
     // Hooked implementation for testing
     let memid = 1;
     let numa = 0;
@@ -95,14 +91,8 @@ pub fn mem_import(
     let mut numa: i32 = -1;
     let desc_ptr = std::ptr::addr_of!(*desc);
     let numa_ptr = std::ptr::addr_of_mut!(numa);
-    let memid = unsafe {
-        sys::obmm_import(
-            desc_ptr.cast::<c_void>(),
-            flags.bits(),
-            base_dist,
-            numa_ptr,
-        )
-    };
+    let memid =
+        unsafe { sys::obmm_import(desc_ptr.cast::<c_void>(), flags.bits(), base_dist, numa_ptr) };
     if memid == OBMM_INVALID_MEMID {
         Err(ObmmError::ImportFailed(-1))
     } else {

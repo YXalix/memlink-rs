@@ -9,8 +9,8 @@ use std::collections::VecDeque;
 use crate::error::{EtmemError, Result};
 use crate::sys::ProcfsHandle;
 use crate::types::{
-    AddressRange, BufferStatus, IdlePageInfo, PipEncoding, ProcIdlePageType, ScanConfig,
-    ScanFlags, PAGE_IDLE_KBUF_SIZE,
+    AddressRange, BufferStatus, IdlePageInfo, PAGE_IDLE_KBUF_SIZE, PipEncoding, ProcIdlePageType,
+    ScanConfig, ScanFlags,
 };
 
 /// Internal control structure for page idle scanning
@@ -64,10 +64,8 @@ impl PageIdleCtrl {
     /// Returns a status indicating if the buffer is full.
     pub fn init_buffer(&mut self, buf_size: usize, bytes_copied: usize) -> BufferStatus {
         self.pie_read = 0;
-        self.pie_read_max = std::cmp::min(
-            PAGE_IDLE_KBUF_SIZE,
-            buf_size.saturating_sub(bytes_copied),
-        );
+        self.pie_read_max =
+            std::cmp::min(PAGE_IDLE_KBUF_SIZE, buf_size.saturating_sub(bytes_copied));
 
         // Reserve space for PIP_CMD_SET_HVA at end
         if self.pie_read_max > std::mem::size_of::<u64>() + 2 {
@@ -111,7 +109,8 @@ impl PageIdleCtrl {
         }
 
         // Add new entry
-        self.results.push_back(IdlePageInfo::new(addr, page_type, 1));
+        self.results
+            .push_back(IdlePageInfo::new(addr, page_type, 1));
         self.last_va = addr;
         BufferStatus::Success
     }
@@ -142,8 +141,14 @@ impl PageIdleCtrl {
                     // Read 64-bit address from next 8 bytes (big-endian)
                     let addr_bytes = &data[i + 1..i + 9];
                     current_addr = u64::from_be_bytes([
-                        addr_bytes[0], addr_bytes[1], addr_bytes[2], addr_bytes[3],
-                        addr_bytes[4], addr_bytes[5], addr_bytes[6], addr_bytes[7],
+                        addr_bytes[0],
+                        addr_bytes[1],
+                        addr_bytes[2],
+                        addr_bytes[3],
+                        addr_bytes[4],
+                        addr_bytes[5],
+                        addr_bytes[6],
+                        addr_bytes[7],
                     ]);
                     i += 9; // 1 command byte + 8 address bytes
                     continue;
@@ -576,12 +581,7 @@ mod tests {
         let mut ctrl = PageIdleCtrl::default();
 
         // Simulate adding pages
-        let status = ctrl.add_page_internal(
-            0x1000,
-            0x2000,
-            ProcIdlePageType::PteIdle,
-            4096,
-        );
+        let status = ctrl.add_page_internal(0x1000, 0x2000, ProcIdlePageType::PteIdle, 4096);
         assert!(matches!(status, BufferStatus::Success));
     }
 }

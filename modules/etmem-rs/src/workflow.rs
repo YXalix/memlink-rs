@@ -343,8 +343,7 @@ impl ScanAndSwapWorkflow {
                 report.pages_scanned += result.pages_found;
                 report.pages_swapped += result.pages_swapped;
                 report.bytes_swapped += result.bytes_swapped;
-                total_idle_bytes +=
-                    (result.idle_ratio * (vma.end - vma.start) as f64) as u64;
+                total_idle_bytes += (result.idle_ratio * (vma.end - vma.start) as f64) as u64;
                 total_scanned_bytes += vma.end - vma.start;
             }
 

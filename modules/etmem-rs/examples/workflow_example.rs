@@ -69,7 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Pages scanned: {}", report.pages_scanned);
             println!("  Pages would swap: {}", report.pages_swapped);
             println!("  Bytes would swap: {}", format_bytes(report.bytes_swapped));
-            println!("  Overall idle ratio: {:.2}%", report.overall_idle_ratio * 100.0);
+            println!(
+                "  Overall idle ratio: {:.2}%",
+                report.overall_idle_ratio * 100.0
+            );
             println!("  Duration: {:?}", report.duration);
 
             // Print per-VMA results
@@ -82,7 +85,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             result.name,
                             result.pages_found,
                             format_percent(result.idle_ratio),
-                            if result.met_criteria { " [WOULD SWAP]" } else { "" }
+                            if result.met_criteria {
+                                " [WOULD SWAP]"
+                            } else {
+                                ""
+                            }
                         );
                     }
                 }

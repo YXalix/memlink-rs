@@ -1,23 +1,23 @@
 //! Integration tests for ubfwctl
 
 use ubfwctl::device::DiscoveredDevice;
-use ubfwctl::types::{FwctlDeviceInfo, IoDieInfo, MarPerfQuery, MarPerfResult, PortInfo};
 use ubfwctl::error::{MAX_TIME_MS, MIN_TIME_MS, UbfwctlError};
 use ubfwctl::format_device_list;
+use ubfwctl::types::{FwctlDeviceInfo, IoDieInfo, MarPerfQuery, MarPerfResult, PortInfo};
 
 #[test]
 fn test_mar_perf_query_from_raw_data() {
     let raw_data: Vec<u32> = vec![
-        0,      // PORT_ID_IDX
-        1000,   // CLOCK_CYCLE_IDX
-        10000,  // FLUX_WR_IDX
-        20000,  // FLUX_RD_IDX
-        30000,  // FLUX_SUM_IDX
-        100,    // WR_CMD_IDX
-        200,    // RD_CMD_IDX
-        300,    // SUM_CMD_IDX
-        50,     // WLATCNT_FIRST_IDX
-        60,     // RLATCNT_FIRST_IDX
+        0,     // PORT_ID_IDX
+        1000,  // CLOCK_CYCLE_IDX
+        10000, // FLUX_WR_IDX
+        20000, // FLUX_RD_IDX
+        30000, // FLUX_SUM_IDX
+        100,   // WR_CMD_IDX
+        200,   // RD_CMD_IDX
+        300,   // SUM_CMD_IDX
+        50,    // WLATCNT_FIRST_IDX
+        60,    // RLATCNT_FIRST_IDX
     ];
 
     let query = MarPerfQuery::from_raw_data(&raw_data);
@@ -236,7 +236,10 @@ fn test_error_display_variants() {
     let msg = format!("{}", err);
     assert!(msg.contains("Ioctl failed"));
 
-    let err = UbfwctlError::DeviceNotFound { chip_id: 0, die_id: 0 };
+    let err = UbfwctlError::DeviceNotFound {
+        chip_id: 0,
+        die_id: 0,
+    };
     let msg = format!("{}", err);
     assert!(msg.contains("not found"));
 

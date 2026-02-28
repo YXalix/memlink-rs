@@ -135,7 +135,7 @@
     clippy::unwrap_in_result,
     clippy::unwrap_used,
     clippy::verbose_file_reads,
-    clippy::wildcard_enum_match_arm,
+    clippy::wildcard_enum_match_arm
 )]
 
 // Module declarations
@@ -157,15 +157,16 @@ pub mod prelude {
     pub use crate::handle::{ExportedMemory, ImportedMemory};
     pub use crate::import::{mem_import, mem_unimport, preimport, unpreimport};
     pub use crate::ownership::{
+        OwnershipSetter,
         prot::{self},
-        set_ownership, OwnershipSetter,
+        set_ownership,
     };
     pub use crate::query::{query_memid_by_pa, query_pa_by_memid};
     pub use crate::sys;
     pub use crate::types::{
-        ImportResult, MemId, ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags,
-        ObmmPreimportInfo, ObmmUnexportFlags, QueryResult, UbPrivData, MAX_NUMA_NODES,
-        OBMM_INVALID_MEMID, OBMM_MAX_LOCAL_NUMA_NODES,
+        ImportResult, MAX_NUMA_NODES, MemId, OBMM_INVALID_MEMID, OBMM_MAX_LOCAL_NUMA_NODES,
+        ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags, ObmmPreimportInfo, ObmmUnexportFlags,
+        QueryResult, UbPrivData,
     };
 }
 
@@ -174,15 +175,15 @@ pub use error::{ObmmError, Result, ToObmmResult};
 pub use export::{export_useraddr, mem_export, mem_unexport};
 pub use import::{mem_import, mem_unimport, preimport, unpreimport};
 pub use ownership::{
-    set_ownership,
-    prot::{self},
     OwnershipSetter,
+    prot::{self},
+    set_ownership,
 };
 pub use query::{query_memid_by_pa, query_pa_by_memid};
 pub use types::{
-    ImportResult, MemId, ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags, ObmmPreimportInfo,
-    ObmmUnexportFlags, QueryResult, UbPrivData, MAX_NUMA_NODES, OBMM_INVALID_MEMID,
-    OBMM_MAX_LOCAL_NUMA_NODES,
+    ImportResult, MAX_NUMA_NODES, MemId, OBMM_INVALID_MEMID, OBMM_MAX_LOCAL_NUMA_NODES,
+    ObmmExportFlags, ObmmMemDesc, ObmmPreimportFlags, ObmmPreimportInfo, ObmmUnexportFlags,
+    QueryResult, UbPrivData,
 };
 
 #[cfg(test)]
@@ -236,7 +237,10 @@ mod tests {
 
         match mem_import(&desc, flags, 0) {
             Ok(result) => {
-                println!("Imported MemID: {}, NUMA: {}", result.mem_id, result.numa_node);
+                println!(
+                    "Imported MemID: {}, NUMA: {}",
+                    result.mem_id, result.numa_node
+                );
                 assert!(result.mem_id != OBMM_INVALID_MEMID);
 
                 // Clean up
@@ -321,22 +325,23 @@ mod tests {
             ..Default::default()
         };
 
-        match preimport(&mut preimport_info,
-            ObmmPreimportFlags::empty(),
-        ) {
+        match preimport(&mut preimport_info, ObmmPreimportFlags::empty()) {
             Ok(()) => println!("Preimport succeeded"),
             Err(e) => println!("Preimport failed (expected on non-OBMM system): {e}"),
         }
 
-        match unpreimport(&preimport_info,
-            ObmmPreimportFlags::default(),
-        ) {
+        match unpreimport(&preimport_info, ObmmPreimportFlags::default()) {
             Ok(()) => println!("Unpreimport succeeded"),
             Err(e) => println!("Unpreimport failed (expected on non-OBMM system): {e}"),
         }
 
         // export_useraddr
-        match export_useraddr::<UbPrivData>(0, 0x7fff_0000_0000, 1024 * 1024 * 2, ObmmExportFlags::ALLOWMMAP) {
+        match export_useraddr::<UbPrivData>(
+            0,
+            0x7fff_0000_0000,
+            1024 * 1024 * 2,
+            ObmmExportFlags::ALLOWMMAP,
+        ) {
             Ok((mem_id, _desc)) => {
                 println!("Export useraddr succeeded: {mem_id}");
                 if let Err(e) = mem_unexport(mem_id, ObmmUnexportFlags::empty()) {

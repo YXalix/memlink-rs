@@ -3,7 +3,7 @@
 use std::fs::OpenOptions;
 use std::os::unix::io::AsRawFd;
 
-use libc::{c_int, flock, LOCK_EX, LOCK_NB};
+use libc::{LOCK_EX, LOCK_NB, c_int, flock};
 
 use crate::error::UbfwctlError;
 use crate::ioctl::FwctlDevice;

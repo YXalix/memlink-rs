@@ -25,8 +25,5 @@ pub trait FwctlCommand {
     ///
     /// # Errors
     /// Returns an error if command execution fails
-    fn execute(
-        &self,
-        input: Self::Input,
-    ) -> Result<Self::Output, Self::Error>;
+    fn execute(&self, input: Self::Input) -> Result<Self::Output, Self::Error>;
 }

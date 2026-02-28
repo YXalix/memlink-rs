@@ -99,10 +99,7 @@ impl ProcIdlePageType {
 
     /// Check if this page type represents an idle (cold) page
     pub const fn is_idle(&self) -> bool {
-        matches!(
-            self,
-            Self::PteIdle | Self::PmdIdle | Self::PmdIdlePtes
-        )
+        matches!(self, Self::PteIdle | Self::PmdIdle | Self::PmdIdlePtes)
     }
 
     /// Check if this page type represents an accessed (hot) page
@@ -124,7 +121,7 @@ impl ProcIdlePageType {
             | Self::PmdIdle
             | Self::PmdIdlePtes
             | Self::PmdHole => 2 * 1024 * 1024, // 2MB
-            Self::PudPresent => 1024 * 1024 * 1024, // 1GB
+            Self::PudPresent => 1024 * 1024 * 1024,                                     // 1GB
             _ => 4096, // Default to 4KB for command types
         }
     }
@@ -512,7 +509,10 @@ mod tests {
     #[test]
     fn test_pip_encoding() {
         let encoded = PipEncoding::compose(ProcIdlePageType::PteIdle as u8, 5);
-        assert_eq!(PipEncoding::extract_type(encoded), ProcIdlePageType::PteIdle as u8);
+        assert_eq!(
+            PipEncoding::extract_type(encoded),
+            ProcIdlePageType::PteIdle as u8
+        );
         assert_eq!(PipEncoding::extract_size(encoded), 5);
 
         let (t, s) = PipEncoding::decode(encoded);

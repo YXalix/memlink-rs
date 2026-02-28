@@ -60,7 +60,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match session.scan_all_vmas(ScanConfig::default()) {
         Ok(results) => {
             println!("Scanned {} VMAs", results.per_vma.len());
-            println!("Total idle: {} bytes", format_bytes(results.total_idle_bytes));
+            println!(
+                "Total idle: {} bytes",
+                format_bytes(results.total_idle_bytes)
+            );
             println!(
                 "Total accessed: {} bytes",
                 format_bytes(results.total_accessed_bytes)
@@ -99,7 +102,11 @@ fn print_vma_info(vma_map: &VmaMap) {
 
     // Heap info
     if let Some(heap) = vma_map.heap() {
-        println!("  Heap: {} bytes at 0x{:x}", format_bytes(heap.size()), heap.start);
+        println!(
+            "  Heap: {} bytes at 0x{:x}",
+            format_bytes(heap.size()),
+            heap.start
+        );
     } else {
         println!("  Heap: not found");
     }
@@ -109,11 +116,7 @@ fn print_vma_info(vma_map: &VmaMap) {
     if !stacks.is_empty() {
         println!("  Stacks: {} thread(s)", stacks.len());
         for (i, stack) in stacks.iter().enumerate() {
-            println!(
-                "    Stack {}: {} bytes",
-                i,
-                format_bytes(stack.size())
-            );
+            println!("    Stack {}: {} bytes", i, format_bytes(stack.size()));
         }
     }
 

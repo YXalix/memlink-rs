@@ -302,16 +302,14 @@ impl SwapcacheConfig {
     ///
     /// Reads from `/sys/kernel/mm/etmem/kernel_swap_enable`
     pub fn is_enabled() -> Result<bool> {
-        crate::sys::kernel_swap_enabled()
-            .map_err(|e| EtmemError::IoError(e.to_string()))
+        crate::sys::kernel_swap_enabled().map_err(|e| EtmemError::IoError(e.to_string()))
     }
 
     /// Enable or disable kernel swap
     ///
     /// Writes to `/sys/kernel/mm/etmem/kernel_swap_enable`
     pub fn set_enabled(enable: bool) -> Result<()> {
-        crate::sys::set_kernel_swap_enable(enable)
-            .map_err(|e| EtmemError::IoError(e.to_string()))
+        crate::sys::set_kernel_swap_enable(enable).map_err(|e| EtmemError::IoError(e.to_string()))
     }
 
     /// Enable kernel swap (convenience method)

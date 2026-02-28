@@ -6,7 +6,7 @@
 
 use std::fmt::Write;
 
-use crate::device::{scan_devices, DiscoveredDevice};
+use crate::device::{DiscoveredDevice, scan_devices};
 use crate::error::UbfwctlError;
 
 /// List command for displaying device information
@@ -256,7 +256,7 @@ pub fn to_device_info(devices: &[DiscoveredDevice]) -> Vec<DeviceInfo> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{IoDieInfo, PortInfo, FwctlDeviceInfo};
+    use crate::types::{FwctlDeviceInfo, IoDieInfo, PortInfo};
 
     fn create_test_device() -> DiscoveredDevice {
         let device_info = FwctlDeviceInfo::new(0, 0, "/dev/fwctl/fwctl00");

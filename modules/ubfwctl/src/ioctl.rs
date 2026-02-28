@@ -345,10 +345,7 @@ impl FwctlDevice {
         self.send_rpc(UbFwctlCmd::QueryIoDiePortInfo, &input, &mut output)?;
 
         // Convert output to bytes for parsing
-        let output_bytes: Vec<u8> = output
-            .iter()
-            .flat_map(|v| v.to_ne_bytes())
-            .collect();
+        let output_bytes: Vec<u8> = output.iter().flat_map(|v| v.to_ne_bytes()).collect();
 
         IoDieInfo::from_raw_data(&output_bytes)
             .map_err(|e| UbfwctlError::InvalidResponse(format!("Failed to parse IO die info: {e}")))

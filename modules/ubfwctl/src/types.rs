@@ -244,7 +244,10 @@ impl MarPerfResult {
 
 impl std::fmt::Display for MarPerfResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "-------------------------- ba-mar_perf --------------------------")?;
+        writeln!(
+            f,
+            "-------------------------- ba-mar_perf --------------------------"
+        )?;
         writeln!(f, "port_id: {} {}", self.first_port_id, self.second_port_id)?;
         writeln!(f, "wr_traffic: {}", self.wr_traffic)?;
         writeln!(f, "rd_traffic: {}", self.rd_traffic)?;
@@ -277,21 +280,13 @@ impl PortInfo {
     /// Get port type as string
     #[must_use]
     pub const fn port_type_str(&self) -> &'static str {
-        if self.port_type == 0 {
-            "eth"
-        } else {
-            "ub"
-        }
+        if self.port_type == 0 { "eth" } else { "ub" }
     }
 
     /// Get link status as string
     #[must_use]
     pub const fn link_status_str(&self) -> &'static str {
-        if self.link_status == 0 {
-            "down"
-        } else {
-            "up"
-        }
+        if self.link_status == 0 { "down" } else { "up" }
     }
 }
 

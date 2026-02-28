@@ -12,9 +12,7 @@
 //! sudo cargo run --example swap_example --package etmem-rs
 //! ```
 
-use etmem_rs::{
-    AddressRange, ScanConfig, ScanSession, SwapConfig, SwapSession, SwapcacheConfig,
-};
+use etmem_rs::{AddressRange, ScanConfig, ScanSession, SwapConfig, SwapSession, SwapcacheConfig};
 use std::env;
 use std::process;
 
@@ -135,7 +133,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    println!("Found {} idle regions, expanded to {} 4KB pages", pages.iter().filter(|p| p.is_idle()).count(), idle_pages.len());
+    println!(
+        "Found {} idle regions, expanded to {} 4KB pages",
+        pages.iter().filter(|p| p.is_idle()).count(),
+        idle_pages.len()
+    );
 
     // Step 2: Create swap session and swap out idle pages
     let swap_config = SwapConfig::default();
@@ -154,7 +156,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         let flushed = session.flush()?;
-        println!("Pass {}: Added {} pages, flushed {}", pass + 1, added, flushed);
+        println!(
+            "Pass {}: Added {} pages, flushed {}",
+            pass + 1,
+            added,
+            flushed
+        );
         total_added += added;
 
         // Wait for kernel to process
@@ -223,7 +230,10 @@ fn get_swap_for_range(start: u64, end: u64) -> u64 {
             in_range = false;
             if let Some((addr_part, _)) = line.split_once(' ')
                 && let Some((range_start, range_end)) = addr_part.split_once('-')
-                && let (Ok(rs), Ok(re)) = (u64::from_str_radix(range_start, 16), u64::from_str_radix(range_end, 16))
+                && let (Ok(rs), Ok(re)) = (
+                    u64::from_str_radix(range_start, 16),
+                    u64::from_str_radix(range_end, 16),
+                )
             {
                 // Check if this region overlaps with our range
                 if rs <= end && re >= start {

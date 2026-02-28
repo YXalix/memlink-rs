@@ -45,7 +45,10 @@ Please rebuild the C library:
     }
 
     // Set up library search path
-    println!("cargo:rustc-link-search=native={}", canonical_path.display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        canonical_path.display()
+    );
 
     // Set up platform-specific rpath for runtime library loading
     match env::consts::OS {
@@ -56,10 +59,7 @@ Please rebuild the C library:
             );
         }
         "windows" => {
-            println!(
-                "cargo:rustc-link-arg=/LIBPATH:{}",
-                canonical_path.display()
-            );
+            println!("cargo:rustc-link-arg=/LIBPATH:{}", canonical_path.display());
         }
         _ => {
             // Unknown OS - emit warning but continue
@@ -88,9 +88,7 @@ fn main() {
             // Users can set OBMM_ALLOW_MISSING_LIB=1 to skip linking (for docs, etc.)
             if env::var("OBMM_ALLOW_MISSING_LIB").is_ok() {
                 println!("cargo:warning={e}");
-                println!(
-                    "cargo:warning=Skipping OBMM linking (OBMM_ALLOW_MISSING_LIB is set)"
-                );
+                println!("cargo:warning=Skipping OBMM linking (OBMM_ALLOW_MISSING_LIB is set)");
             } else {
                 panic!("{e}");
             }

@@ -152,18 +152,18 @@ pub use error::{EtmemError, Result, ToEtmemResult};
 pub use scan::{IdlePageScanner, PageIdleCtrl, ScanSession};
 pub use session::{EtmemSession, ScanAndSwapReport, SessionConfig, VmaScanResults};
 pub use swap::{PageSwapper, SwapSession, SwapcacheConfig};
-pub use vma::{PathnameType, VmaFilter, VmaMap, VmaPermissions, VmaRegion};
 pub use types::{
-    AddressRange, BufferStatus, IdlePageInfo, PipEncoding, ProcIdlePageType, ScanConfig,
-    ScanFlags, SwapConfig, SwapcacheWatermark, WatermarkConfig, IDLE_SCAN_MAGIC, INVALID_PAGE,
-    PAGE_IDLE_BUF_MIN, PAGE_IDLE_KBUF_SIZE, RECLAIM_SWAPCACHE_MAGIC, RET_RESCAN_FLAG,
-    SWAP_SCAN_NUM_MAX, WATERMARK_MAX,
+    AddressRange, BufferStatus, IDLE_SCAN_MAGIC, INVALID_PAGE, IdlePageInfo, PAGE_IDLE_BUF_MIN,
+    PAGE_IDLE_KBUF_SIZE, PipEncoding, ProcIdlePageType, RECLAIM_SWAPCACHE_MAGIC, RET_RESCAN_FLAG,
+    SWAP_SCAN_NUM_MAX, ScanConfig, ScanFlags, SwapConfig, SwapcacheWatermark, WATERMARK_MAX,
+    WatermarkConfig,
 };
+pub use vma::{PathnameType, VmaFilter, VmaMap, VmaPermissions, VmaRegion};
 // PageIdleCtrl is re-exported from scan module above
 pub use util::{
-    bytes_to_pages, filter_accessed_pages, filter_huge_pages, filter_idle_pages, format_bytes,
-    group_by_type, huge_page_align_down, is_etmem_available, is_huge_page_aligned, is_page_aligned,
-    is_root, page_align_down, page_align_up, pages_to_bytes, suggest_page_size, IdlePageStats,
+    IdlePageStats, bytes_to_pages, filter_accessed_pages, filter_huge_pages, filter_idle_pages,
+    format_bytes, group_by_type, huge_page_align_down, is_etmem_available, is_huge_page_aligned,
+    is_page_aligned, is_root, page_align_down, page_align_up, pages_to_bytes, suggest_page_size,
 };
 
 /// Convenience prelude module for common imports
@@ -173,7 +173,9 @@ pub use util::{
 /// use etmem_rs::prelude::*;
 /// ```
 pub mod prelude {
-    pub use crate::builder::{quick_scan_heap, quick_scan_idle, quick_swap, ScanBuilder, SwapBuilder};
+    pub use crate::builder::{
+        ScanBuilder, SwapBuilder, quick_scan_heap, quick_scan_idle, quick_swap,
+    };
     pub use crate::error::{EtmemError, Result};
     pub use crate::session::{EtmemSession, SessionConfig};
     pub use crate::types::{AddressRange, IdlePageInfo, ScanConfig, SwapConfig};

@@ -132,7 +132,7 @@ impl VmaPermissions {
     }
 
     /// Convert to a short string representation (e.g., "rwxp")
-    pub fn to_string(&self) -> String {
+    pub fn as_perm_string(&self) -> String {
         format!(
             "{}{}{}{}",
             if self.read { 'r' } else { '-' },
@@ -145,7 +145,14 @@ impl VmaPermissions {
 
 impl fmt::Display for VmaPermissions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(
+            f,
+            "{}{}{}{}",
+            if self.read { 'r' } else { '-' },
+            if self.write { 'w' } else { '-' },
+            if self.execute { 'x' } else { '-' },
+            if self.shared { 's' } else { 'p' }
+        )
     }
 }
 
@@ -409,25 +416,23 @@ impl VmaMap {
             EtmemError::VmaParseError(format!("Invalid start address: {}", addrs[0]))
         })?;
 
-        let end = u64::from_str_radix(addrs[1], 16).map_err(|_| {
-            EtmemError::VmaParseError(format!("Invalid end address: {}", addrs[1]))
-        })?;
+        let end = u64::from_str_radix(addrs[1], 16)
+            .map_err(|_| EtmemError::VmaParseError(format!("Invalid end address: {}", addrs[1])))?;
 
         // Parse permissions (second field)
         let permissions = VmaPermissions::from_str(parts[1])?;
 
         // Parse offset (third field)
-        let offset = u64::from_str_radix(parts[2], 16).map_err(|_| {
-            EtmemError::VmaParseError(format!("Invalid offset: {}", parts[2]))
-        })?;
+        let offset = u64::from_str_radix(parts[2], 16)
+            .map_err(|_| EtmemError::VmaParseError(format!("Invalid offset: {}", parts[2])))?;
 
         // Device (fourth field)
         let device = parts[3].to_string();
 
         // Inode (fifth field)
-        let inode = parts[4].parse::<u64>().map_err(|_| {
-            EtmemError::VmaParseError(format!("Invalid inode: {}", parts[4]))
-        })?;
+        let inode = parts[4]
+            .parse::<u64>()
+            .map_err(|_| EtmemError::VmaParseError(format!("Invalid inode: {}", parts[4])))?;
 
         // Pathname (optional, remainder of line)
         let pathname = if parts.len() > 5 {
@@ -477,12 +482,15 @@ impl VmaMap {
 
     /// Find a region containing the given address
     pub fn find_region(&self, addr: u64) -> Option<&VmaRegion> {
-        self.regions.binary_search_by_key(&addr, |r| r.start)
+        self.regions
+            .binary_search_by_key(&addr, |r| r.start)
             .ok()
             .map(|idx| &self.regions[idx])
             .or_else(|| {
                 // Binary search gives us insertion point, check previous region
-                let idx = self.regions.binary_search_by_key(&addr, |r| r.start)
+                let idx = self
+                    .regions
+                    .binary_search_by_key(&addr, |r| r.start)
                     .unwrap_err();
                 if idx > 0 && self.regions[idx - 1].contains(addr) {
                     Some(&self.regions[idx - 1])
@@ -660,7 +668,8 @@ mod tests {
 
     #[test]
     fn test_parse_line_shared_lib() {
-        let line = "7f8b3c400000-7f8b3c428000 r-xp 00000000 08:01 1310735 /lib/x86_64-linux-gnu/libc.so.6";
+        let line =
+            "7f8b3c400000-7f8b3c428000 r-xp 00000000 08:01 1310735 /lib/x86_64-linux-gnu/libc.so.6";
         let vma = VmaMap::parse_line(line).unwrap();
 
         assert_eq!(vma.pathname_type, PathnameType::SharedLibrary);
@@ -713,8 +722,14 @@ mod tests {
     #[test]
     fn test_pathname_type() {
         assert_eq!(PathnameType::from_pathname(None), PathnameType::Anonymous);
-        assert_eq!(PathnameType::from_pathname(Some("[heap]")), PathnameType::Heap);
-        assert_eq!(PathnameType::from_pathname(Some("[stack]")), PathnameType::Stack);
+        assert_eq!(
+            PathnameType::from_pathname(Some("[heap]")),
+            PathnameType::Heap
+        );
+        assert_eq!(
+            PathnameType::from_pathname(Some("[stack]")),
+            PathnameType::Stack
+        );
         assert_eq!(
             PathnameType::from_pathname(Some("[stack:1234]")),
             PathnameType::Stack
