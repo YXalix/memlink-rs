@@ -11,6 +11,17 @@ fn main() {
 
     let fwctl_h = ubctl_headers.join("fwctl.h");
     let ub_fwctl_h = ubctl_headers.join("ub_fwctl.h");
+
+    // Check if headers exist - skip bindgen if not (e.g., in CI)
+    if !fwctl_h.exists() || !ub_fwctl_h.exists() {
+        println!(
+            "cargo:warning=Kernel headers not found at {}, skipping bindgen",
+            ubctl_headers.display()
+        );
+        println!("cargo:warning=Using manual FFI definitions from src/ioctl.rs");
+        return;
+    }
+
     let header_include = format!("-I{}", ubctl_headers.display());
 
     // Tell cargo to re-run if headers change
