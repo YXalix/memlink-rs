@@ -3,12 +3,11 @@
 //! This module provides safe wrappers for memory import operations including
 //! standard memory import, preimport, and their unimport counterparts.
 
+use crate::error::{ObmmError, Result};
+
 #[cfg(feature = "native")]
 use std::ffi::c_void;
 
-#[cfg(feature = "native")]
-use crate::error::ToObmmResult;
-use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::sys;
 use crate::types::{
@@ -53,7 +52,7 @@ pub fn mem_import(_: &ObmmMemDesc<UbPrivData>, _: ObmmExportFlags, _: i32) -> Re
     let memid = 1;
     let numa = 0;
     if memid == OBMM_INVALID_MEMID {
-        Err(ObmmError::ImportFailed(-1))
+        Err(ObmmError::ImportFailed("invalid memid returned".to_string()))
     } else {
         Ok(ImportResult {
             mem_id: memid,
@@ -94,7 +93,7 @@ pub fn mem_import(
     let memid =
         unsafe { sys::obmm_import(desc_ptr.cast::<c_void>(), flags.bits(), base_dist, numa_ptr) };
     if memid == OBMM_INVALID_MEMID {
-        Err(ObmmError::ImportFailed(-1))
+        Err(ObmmError::ImportFailed("invalid memid returned".to_string()))
     } else {
         Ok(ImportResult {
             mem_id: memid,
@@ -149,7 +148,11 @@ pub fn mem_unimport(_: MemId, _: ObmmExportFlags) -> Result<()> {
 #[inline]
 pub fn mem_unimport(mem_id: MemId, flags: ObmmExportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_unimport(mem_id, flags.bits()) };
-    ret.to_obmm_result(ObmmError::UnimportFailed)
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(ObmmError::UnimportFailed(format!("return code: {}", ret)))
+    }
 }
 
 /// Preimport memory region
@@ -204,7 +207,11 @@ pub fn preimport(_: &mut ObmmPreimportInfo, _: ObmmPreimportFlags) -> Result<()>
 #[inline]
 pub fn preimport(info: &mut ObmmPreimportInfo, flags: ObmmPreimportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_preimport(info, flags.bits()) };
-    ret.to_obmm_result(ObmmError::PreimportFailed)
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(ObmmError::PreimportFailed(format!("return code: {}", ret)))
+    }
 }
 
 /// Unpreimport memory region
@@ -253,5 +260,9 @@ pub fn unpreimport(_: &ObmmPreimportInfo, _: ObmmPreimportFlags) -> Result<()> {
 #[inline]
 pub fn unpreimport(info: &ObmmPreimportInfo, flags: ObmmPreimportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_unpreimport(info, flags.bits()) };
-    ret.to_obmm_result(ObmmError::UnpreimportFailed)
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(ObmmError::UnpreimportFailed(format!("return code: {}", ret)))
+    }
 }

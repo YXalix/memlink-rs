@@ -6,8 +6,6 @@
 #[cfg(feature = "native")]
 use std::ffi::c_void;
 
-#[cfg(feature = "native")]
-use crate::error::ToObmmResult;
 use crate::error::{ObmmError, Result};
 #[cfg(feature = "native")]
 use crate::sys;
@@ -88,7 +86,11 @@ pub fn set_ownership(_fd: i32, _start: u64, _end: u64, _prot: i32) -> Result<()>
 pub fn set_ownership(fd: i32, start: u64, end: u64, prot: i32) -> Result<()> {
     let ret =
         unsafe { sys::obmm_set_ownership(fd, start as *mut c_void, end as *mut c_void, prot) };
-    ret.to_obmm_result(ObmmError::SetOwnershipFailed)
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(ObmmError::SetOwnershipFailed(format!("return code: {}", ret)))
+    }
 }
 
 /// Builder-style API for setting ownership

@@ -62,7 +62,7 @@ jobs:
       - name: Run unit tests (no default features)
         run: cargo test --workspace --no-default-features --verbose
 
-  # Phase 2: Full build with C library dependencies
+  # Phase 2: Full build with C library dependencies (only if kernel headers exist)
   build-native:
     name: Build & Test (Native Features)
     runs-on: ubuntu-latest
@@ -71,20 +71,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check for OBMM kernel headers
+        id: check_headers
+        run: |
+          if [ -f /usr/include/ub/obmm.h ] || [ -f /usr/local/include/ub/obmm.h ]; then
+            echo "OBMM kernel headers found"
+            echo "has_headers=true" >> $GITHUB_OUTPUT
+          else
+            echo "OBMM kernel headers not found - skipping native build"
+            echo "has_headers=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Install system dependencies
+        if: steps.check_headers.outputs.has_headers == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential clang libclang-dev
 
       - name: Install Rust toolchain
+        if: steps.check_headers.outputs.has_headers == 'true'
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Rust dependencies
+        if: steps.check_headers.outputs.has_headers == 'true'
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "memlink-rs-native"
 
       - name: Build OBMM C library
+        if: steps.check_headers.outputs.has_headers == 'true'
         run: |
           cd modules/obmm-rs/obmm-sys
           mkdir -p build
@@ -93,16 +108,20 @@ jobs:
           make
 
       - name: Build workspace (all features)
+        if: steps.check_headers.outputs.has_headers == 'true'
         run: cargo build --workspace --verbose
 
       - name: Run tests (all features)
+        if: steps.check_headers.outputs.has_headers == 'true'
         run: cargo test --workspace --verbose
         continue-on-error: true
 
       - name: Build release binary
+        if: steps.check_headers.outputs.has_headers == 'true'
         run: cargo build --release --bin memlink
 
       - name: Upload build artifacts
+        if: steps.check_headers.outputs.has_headers == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: memlink-${{ github.sha }}

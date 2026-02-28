@@ -43,7 +43,7 @@ use crate::types::{MemId, QueryResult};
 pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
     // Hooked implementation for testing
     if pa == 0 {
-        Err(ObmmError::QueryFailed(-1))
+        Err(ObmmError::QueryFailed("query failed".to_string()))
     } else {
         Ok(QueryResult {
             mem_id: 1,
@@ -85,7 +85,7 @@ pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
             phys_addr: 0,
         })
     } else {
-        Err(ObmmError::QueryFailed(ret))
+        Err(ObmmError::QueryFailed(format!("return code: {}", ret)))
     }
 }
 
@@ -121,7 +121,7 @@ pub fn query_memid_by_pa(pa: u64) -> Result<QueryResult> {
 pub fn query_pa_by_memid(mem_id: MemId, offset: u64) -> Result<u64> {
     // Hooked implementation for testing
     if mem_id == 0 {
-        Err(ObmmError::QueryFailed(-1))
+        Err(ObmmError::QueryFailed("query failed".to_string()))
     } else {
         // Using wrapping_add to avoid potential overflow panics in debug mode
         let base: u64 = 0x1000_0000;
@@ -156,6 +156,6 @@ pub fn query_pa_by_memid(mem_id: MemId, offset: u64) -> Result<u64> {
     if ret == 0 {
         Ok(pa)
     } else {
-        Err(ObmmError::QueryFailed(ret))
+        Err(ObmmError::QueryFailed(format!("return code: {}", ret)))
     }
 }

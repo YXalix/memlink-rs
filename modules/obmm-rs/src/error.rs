@@ -14,28 +14,32 @@ pub type Result<T> = result::Result<T, ObmmError>;
 pub enum ObmmError {
     /// Invalid memory ID encountered
     InvalidMemId,
-    /// Memory export failed with error code
-    ExportFailed(i32),
-    /// Memory unexport failed with error code
-    UnexportFailed(i32),
-    /// Memory import failed with error code
-    ImportFailed(i32),
-    /// Memory unimport failed with error code
-    UnimportFailed(i32),
-    /// Memory preimport failed with error code
-    PreimportFailed(i32),
-    /// Memory unpreimport failed with error code
-    UnpreimportFailed(i32),
-    /// Export user address failed with error code
-    ExportUseraddrFailed(i32),
-    /// Set ownership failed with error code
-    SetOwnershipFailed(i32),
-    /// Query operation failed with error code
-    QueryFailed(i32),
+    /// Memory export failed
+    ExportFailed(String),
+    /// Memory unexport failed
+    UnexportFailed(String),
+    /// Memory import failed
+    ImportFailed(String),
+    /// Memory unimport failed
+    UnimportFailed(String),
+    /// Memory preimport failed
+    PreimportFailed(String),
+    /// Memory unpreimport failed
+    UnpreimportFailed(String),
+    /// Export user address failed
+    ExportUseraddrFailed(String),
+    /// Set ownership failed
+    SetOwnershipFailed(String),
+    /// Query operation failed
+    QueryFailed(String),
     /// Invalid input provided
     InvalidInput(&'static str),
     /// I/O error occurred
     IoError(String),
+    /// Device error (e.g., failed to open /dev/obmm)
+    DeviceError(String),
+    /// Ownership operation failed
+    OwnershipFailed(String),
     /// Serialization/deserialization error
     SerializationError(String),
 }
@@ -45,29 +49,31 @@ impl fmt::Display for ObmmError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ObmmError::InvalidMemId => write!(f, "Invalid memory ID"),
-            ObmmError::ExportFailed(code) => write!(f, "Memory export failed with code: {code}"),
-            ObmmError::UnexportFailed(code) => {
-                write!(f, "Memory unexport failed with code: {code}")
+            ObmmError::ExportFailed(ref msg) => write!(f, "Memory export failed: {msg}"),
+            ObmmError::UnexportFailed(ref msg) => {
+                write!(f, "Memory unexport failed: {msg}")
             }
-            ObmmError::ImportFailed(code) => write!(f, "Memory import failed with code: {code}"),
-            ObmmError::UnimportFailed(code) => {
-                write!(f, "Memory unimport failed with code: {code}")
+            ObmmError::ImportFailed(ref msg) => write!(f, "Memory import failed: {msg}"),
+            ObmmError::UnimportFailed(ref msg) => {
+                write!(f, "Memory unimport failed: {msg}")
             }
-            ObmmError::PreimportFailed(code) => {
-                write!(f, "Memory preimport failed with code: {code}")
+            ObmmError::PreimportFailed(ref msg) => {
+                write!(f, "Memory preimport failed: {msg}")
             }
-            ObmmError::UnpreimportFailed(code) => {
-                write!(f, "Memory unpreimport failed with code: {code}")
+            ObmmError::UnpreimportFailed(ref msg) => {
+                write!(f, "Memory unpreimport failed: {msg}")
             }
-            ObmmError::ExportUseraddrFailed(code) => {
-                write!(f, "Export user address failed with code: {code}")
+            ObmmError::ExportUseraddrFailed(ref msg) => {
+                write!(f, "Export user address failed: {msg}")
             }
-            ObmmError::SetOwnershipFailed(code) => {
-                write!(f, "Set ownership failed with code: {code}")
+            ObmmError::SetOwnershipFailed(ref msg) => {
+                write!(f, "Set ownership failed: {msg}")
             }
-            ObmmError::QueryFailed(code) => write!(f, "Query operation failed with code: {code}"),
+            ObmmError::QueryFailed(ref msg) => write!(f, "Query operation failed: {msg}"),
             ObmmError::InvalidInput(msg) => write!(f, "Invalid input: {msg}"),
             ObmmError::IoError(ref msg) => write!(f, "I/O error: {msg}"),
+            ObmmError::DeviceError(ref msg) => write!(f, "Device error: {msg}"),
+            ObmmError::OwnershipFailed(ref msg) => write!(f, "Ownership operation failed: {msg}"),
             ObmmError::SerializationError(ref msg) => write!(f, "Serialization error: {msg}"),
         }
     }

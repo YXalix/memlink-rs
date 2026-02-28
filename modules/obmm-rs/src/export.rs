@@ -6,9 +6,9 @@
 #[cfg(feature = "native")]
 use std::ffi::c_void;
 
-#[cfg(feature = "native")]
-use crate::error::ToObmmResult;
 use crate::error::{ObmmError, Result};
+
+#[cfg(feature = "native")]
 #[cfg(feature = "native")]
 use crate::sys;
 use crate::types::{MemId, OBMM_INVALID_MEMID, ObmmExportFlags, ObmmMemDesc, ObmmUnexportFlags};
@@ -87,8 +87,7 @@ pub fn mem_export<T: Default>(
 ) -> anyhow::Result<(MemId, ObmmMemDesc<T>)> {
     let mut desc = ObmmMemDesc::<T>::default();
     let desc_ptr = std::ptr::addr_of_mut!(desc);
-    let memid =
-        unsafe { sys::obmm_export(length.as_ptr(), flags.bits(), desc_ptr.cast::<c_void>()) };
+    let memid = sys::obmm_export(length.as_ptr(), flags.bits(), desc_ptr.cast::<c_void>());
     if memid == OBMM_INVALID_MEMID {
         Err(anyhow::anyhow!("Failed to export memory"))
     } else {
@@ -142,7 +141,11 @@ pub fn mem_unexport(_: MemId, _: ObmmUnexportFlags) -> Result<()> {
 #[inline]
 pub fn mem_unexport(mem_id: MemId, flags: ObmmUnexportFlags) -> Result<()> {
     let ret = unsafe { sys::obmm_unexport(mem_id, flags.bits()) };
-    ret.to_obmm_result(ObmmError::UnexportFailed)
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(ObmmError::UnexportFailed(format!("return code: {}", ret)))
+    }
 }
 
 /// Export user address space
