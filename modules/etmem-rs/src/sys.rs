@@ -22,7 +22,7 @@ pub fn swap_pages_path(pid: u32) -> String {
 }
 
 /// Sysfs path for kernel swap enable
-pub const SYS_ETMEM_SWAP_ENABLE: &str = "/sys/kernel/mm/etmem/kernel_swap_enable";
+pub const SYS_ETMEM_SWAP_ENABLE: &str = "/sys/kernel/mm/swap/kernel_swap_enable";
 
 /// IOCTL commands for idle scan operations
 ///

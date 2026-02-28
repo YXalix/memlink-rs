@@ -1,6 +1,6 @@
-//! ETMEM Hello World Example - Self-Scanning Memory
+//! ETMEM Scan Example - Self-Scanning Memory
 //!
-//! This simple example demonstrates ETMEM functionality by:
+//! This example demonstrates ETMEM scan functionality by:
 //! 1. Allocating memory using mmap
 //! 2. Scanning its own memory pages
 //! 3. Displaying memory statistics
@@ -9,10 +9,10 @@
 //!
 //! ```bash
 //! # Scan with default settings (may show huge pages for large allocations)
-//! sudo cargo run --example hello_world --package etmem-rs
+//! sudo cargo run --example scan_example --package etmem-rs
 //!
 //! # Force 4KB page scanning (disable huge pages)
-//! sudo cargo run --example hello_world --package etmem-rs -- --no-huge
+//! sudo cargo run --example scan_example --package etmem-rs -- --no-huge
 //! ```
 //!
 //! # Requirements
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let disable_huge_pages = args.contains(&"--no-huge".to_string());
 
     if args.len() > 1 && args[1] == "--help" {
-        println!("Usage: hello_world [OPTIONS]");
+        println!("Usage: scan_example [OPTIONS]");
         println!();
         println!("Options:");
         println!("  --no-huge    Disable transparent huge pages for 4KB page granularity");
@@ -64,8 +64,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    println!("ETMEM Hello World Example");
-    println!("=========================\n");
+    println!("ETMEM Scan Example");
+    println!("==================\n");
 
     // Allocate memory using mmap
     let ptr = unsafe {

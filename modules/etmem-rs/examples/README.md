@@ -14,16 +14,16 @@ This directory contains example programs demonstrating the usage of the `etmem-r
 
 ## Examples
 
-### 1. Hello World (`hello_world.rs`)
+### 1. Scan Example (`scan_example.rs`)
 
-A simple self-contained example that demonstrates basic ETMEM functionality:
+A simple self-contained example that demonstrates basic ETMEM scanning functionality:
 
 ```bash
 # Default: May show huge pages (2MB) for large allocations
-cargo run --example hello_world --package etmem-rs
+cargo run --example scan_example --package etmem-rs
 
 # Force 4KB page granularity
-cargo run --example hello_world --package etmem-rs -- --no-huge
+cargo run --example scan_example --package etmem-rs -- --no-huge
 ```
 
 **What it does:**
@@ -41,8 +41,8 @@ cargo run --example hello_world --package etmem-rs -- --no-huge
 
 **Example output (with --no-huge for 4KB pages):**
 ```
-ETMEM Hello World Example
-=========================
+ETMEM Scan Example
+==================
 
 Allocated 10 MB of memory at 0xffff9e400000
 Disabled transparent huge pages for this allocation
@@ -85,6 +85,74 @@ Summary:
 - Using `ScanSession` with specific address ranges
 - Interpreting page scan results
 
+---
+
+### 2. Swap Example (`swap_example.rs`)
+
+Simple demonstration of ETMEM swap functionality:
+
+```bash
+cargo run --example swap_example --package etmem-rs
+```
+
+**What it does:**
+- Allocates 10 MB of memory using mmap
+- Touches all pages to ensure they're mapped
+- Scans pages to identify idle pages (required before swap)
+- Swaps out idle pages
+- Verifies swap by reading `/proc/self/smaps`
+
+**Requirements:**
+- Swap space must be configured (check with `swapon -s`)
+- `etmem_swap.ko` kernel module must be loaded
+
+**Example output:**
+```
+ETMEM Swap Example
+==================
+
+Enabling kernel swap...
+Kernel swap enabled
+
+Allocated 10 MB at 0xffffb9a00000-0xffffba400000
+Touched all pages to ensure they're mapped
+
+Baseline swap: 0 KB
+
+Scanning pages to identify idle pages...
+Waiting 2 seconds for pages to become idle...
+Found 160 idle pages out of 160 total
+
+Swapping out 160 idle pages...
+Added 160 pages to swap session
+Final flush: 0 pages
+Total pages sent to kernel: 160
+
+========================================
+Results:
+  Baseline swap:  0 KB
+  Final swap:     0 KB
+  Swapped out:    0 KB (0 MB)
+  Expected:       10240 KB (10 MB)
+
+✗ No pages were swapped to disk
+  Note: This may be expected if:
+    - Swap space is not configured (check with 'swapon -s')
+    - Kernel is not configured to swap anonymous pages
+    - The ETMEM swap feature has additional requirements
+========================================
+
+Memory freed.
+```
+
+**Features demonstrated:**
+- Enabling kernel swap via `SwapcacheConfig::enable()`
+- Using `SwapSession` to swap out idle pages
+- Scan-then-swap workflow pattern
+- Verifying swap via `/proc/self/smaps`
+
+---
+
 ## Technical Details
 
 ### PIP (Proc Idle Page) Format
@@ -110,12 +178,13 @@ Example decoding (from etmemd_scan.c get_address_from_buf):
 
 ### API Usage
 
+#### Scanning Memory
 ```rust
 use etmem_rs::{AddressRange, ScanConfig, ScanSession};
 
 // Create a scan session for the current process
 let config = ScanConfig::default();
-let mut session = ScanSession::new(std::process::id() as u32, config)?;
+let mut session = ScanSession::new(std::process::id(), config)?;
 
 // Define a memory range to scan
 let range = AddressRange {
@@ -133,6 +202,27 @@ for page in pages {
 }
 ```
 
+#### Swapping Memory
+```rust
+use etmem_rs::{SwapConfig, SwapSession, SwapcacheConfig};
+
+// Enable kernel swap globally
+SwapcacheConfig::enable()?;
+
+// Create a swap session for the current process
+let config = SwapConfig::default();
+let mut session = SwapSession::new(std::process::id(), config)?;
+
+// Add addresses to swap (must be page-aligned)
+session.add_address(0x7fff0000)?;
+session.add_address(0x7fff1000)?;
+
+// Flush to perform the swap
+session.flush()?;
+```
+
+---
+
 ## Troubleshooting
 
 ### "No pages found in scanned range"
@@ -147,7 +237,8 @@ If you get no results:
 
 ETMEM requires CAP_SYS_ADMIN capability (root). Run with sudo:
 ```bash
-sudo cargo run --example hello_world --package etmem-rs
+sudo cargo run --example scan_example --package etmem-rs
+sudo cargo run --example swap_example --package etmem-rs
 ```
 
 ### Module not found
@@ -155,6 +246,15 @@ sudo cargo run --example hello_world --package etmem-rs
 If you see "ETMEM is not available":
 1. Check kernel config: `zgrep ETMEM /proc/config.gz` or `grep ETMEM /boot/config-$(uname -r)`
 2. Build and load the kernel modules if not present
+
+### Swap errors
+
+If swapping fails:
+1. Check swap space: `swapon -s` or `cat /proc/swaps`
+2. Ensure `etmem_swap.ko` is loaded: `lsmod | grep etmem_swap`
+3. Check kernel messages: `dmesg | tail -20`
+
+---
 
 ## Testing
 
@@ -168,6 +268,7 @@ lsmod | grep etmem
 # etmem_swap             16384  0
 # etmem_scan             24576  0
 
-# Run example
-cargo run --example hello_world --package etmem-rs
+# Run examples
+cargo run --example scan_example --package etmem-rs
+sudo cargo run --example swap_example --package etmem-rs
 ```
