@@ -19,7 +19,13 @@ use crate::types::{MemId, ObmmPreimportInfo};
 ///
 /// # Returns
 /// Memory ID on success, `OBMM_INVALID_MEMID` on failure
-pub fn obmm_export(length: *const usize, flags: u64, desc: *mut c_void) -> MemId {
+///
+/// # Safety
+///
+/// The caller must ensure that:
+/// - `length` points to a valid array of at least `OBMM_MAX_LOCAL_NUMA_NODES` elements
+/// - `desc` points to a valid, writable `ObmmMemDesc` structure
+pub unsafe fn obmm_export(length: *const usize, flags: u64, desc: *mut c_void) -> MemId {
     if length.is_null() || desc.is_null() {
         return OBMM_INVALID_MEMID;
     }
@@ -111,7 +117,18 @@ pub fn obmm_unexport(id: MemId, flags: u64) -> i32 {
 ///
 /// # Returns
 /// Memory ID on success, `OBMM_INVALID_MEMID` on failure
-pub fn obmm_import(desc: *const c_void, flags: u64, base_dist: i32, numa: *mut i32) -> MemId {
+///
+/// # Safety
+///
+/// The caller must ensure that:
+/// - `desc` points to a valid `ObmmMemDesc` structure
+/// - `numa` is either null or points to a writable `i32`
+pub unsafe fn obmm_import(
+    desc: *const c_void,
+    flags: u64,
+    base_dist: i32,
+    numa: *mut i32,
+) -> MemId {
     if desc.is_null() {
         return OBMM_INVALID_MEMID;
     }
@@ -122,16 +139,12 @@ pub fn obmm_import(desc: *const c_void, flags: u64, base_dist: i32, numa: *mut i
     // Validate base_dist if NUMA_REMOTE flag is set without PREIMPORT
     if (flags & OBMM_IMPORT_FLAG_NUMA_REMOTE) != 0
         && (flags & OBMM_IMPORT_FLAG_PREIMPORT) == 0
-        && (base_dist < 0 || base_dist > 255)
+        && !(0..=255).contains(&base_dist)
     {
         return OBMM_INVALID_MEMID;
     }
 
-    let numa_id = if numa.is_null() {
-        -1
-    } else {
-        unsafe { *numa }
-    };
+    let numa_id = if numa.is_null() { -1 } else { unsafe { *numa } };
 
     let mut cmd = ObmmCmdImport {
         flags: flags & OBMM_IMPORT_FLAG_MASK,
@@ -158,7 +171,7 @@ pub fn obmm_import(desc: *const c_void, flags: u64, base_dist: i32, numa: *mut i
         Ok(_) => {
             if !numa.is_null() {
                 unsafe {
-                    *numa = cmd.numa_id;
+                    std::ptr::write(numa, cmd.numa_id);
                 }
             }
             cmd.mem_id
@@ -204,7 +217,12 @@ pub fn obmm_unimport(id: MemId, flags: u64) -> i32 {
 ///
 /// # Returns
 /// 0 on success, -1 on failure
-pub fn obmm_preimport(info: *mut ObmmPreimportInfo, flags: u64) -> i32 {
+///
+/// # Safety
+///
+/// The caller must ensure that `info` points to a valid, writable
+/// `ObmmPreimportInfo` structure.
+pub unsafe fn obmm_preimport(info: *mut ObmmPreimportInfo, flags: u64) -> i32 {
     if info.is_null() {
         return -1;
     }
@@ -212,7 +230,7 @@ pub fn obmm_preimport(info: *mut ObmmPreimportInfo, flags: u64) -> i32 {
     let pre_info = unsafe { &*info };
 
     // Validate base_dist
-    if pre_info.base_dist < 0 || pre_info.base_dist > 255 {
+    if !(0..=255).contains(&pre_info.base_dist) {
         return -1;
     }
 
@@ -255,7 +273,11 @@ pub fn obmm_preimport(info: *mut ObmmPreimportInfo, flags: u64) -> i32 {
 ///
 /// # Returns
 /// 0 on success, -1 on failure
-pub fn obmm_unpreimport(info: *const ObmmPreimportInfo, flags: u64) -> i32 {
+///
+/// # Safety
+///
+/// The caller must ensure that `info` points to a valid `ObmmPreimportInfo` structure.
+pub unsafe fn obmm_unpreimport(info: *const ObmmPreimportInfo, flags: u64) -> i32 {
     if info.is_null() {
         return -1;
     }
@@ -304,7 +326,13 @@ pub fn obmm_unpreimport(info: *const ObmmPreimportInfo, flags: u64) -> i32 {
 ///
 /// # Returns
 /// Memory ID on success, `OBMM_INVALID_MEMID` on failure
-pub fn obmm_export_useraddr(
+///
+/// # Safety
+///
+/// The caller must ensure that:
+/// - `va` is a valid virtual address in the target process
+/// - `desc` points to a valid, writable `ObmmMemDesc` structure
+pub unsafe fn obmm_export_useraddr(
     pid: i32,
     va: *mut c_void,
     length: usize,
@@ -356,14 +384,18 @@ pub fn obmm_export_useraddr(
 /// address space using memory protection bits.
 ///
 /// # Arguments
-/// * `fd` - File descriptor of OBMM memory device (unused in pure Rust impl)
+/// * `_fd` - File descriptor of OBMM memory device (unused in pure Rust impl)
 /// * `start` - Start virtual address
 /// * `end` - End virtual address
 /// * `prot` - Protection bits (PROT_NONE=0, PROT_READ=1, PROT_WRITE=2)
 ///
 /// # Returns
 /// 0 on success, -1 on failure
-pub fn obmm_set_ownership(_fd: i32, start: *mut c_void, end: *mut c_void, prot: i32) -> i32 {
+///
+/// # Safety
+///
+/// The caller must ensure that `start` and `end` are valid virtual addresses.
+pub unsafe fn obmm_set_ownership(_fd: i32, start: *mut c_void, end: *mut c_void, prot: i32) -> i32 {
     if start.is_null() || end.is_null() {
         return -1;
     }
@@ -404,7 +436,13 @@ pub fn obmm_set_ownership(_fd: i32, start: *mut c_void, end: *mut c_void, prot: 
 ///
 /// # Returns
 /// 0 on success, -1 on failure
-pub fn obmm_query_memid_by_pa(pa: u64, id: *mut MemId, offset: *mut u64) -> i32 {
+///
+/// # Safety
+///
+/// The caller must ensure that:
+/// - `id` is either null or points to a writable `MemId`
+/// - `offset` is either null or points to a writable `u64`
+pub unsafe fn obmm_query_memid_by_pa(pa: u64, id: *mut MemId, offset: *mut u64) -> i32 {
     if id.is_null() && offset.is_null() {
         return -1;
     }
@@ -426,12 +464,12 @@ pub fn obmm_query_memid_by_pa(pa: u64, id: *mut MemId, offset: *mut u64) -> i32 
         Ok(_) => {
             if !id.is_null() {
                 unsafe {
-                    *id = cmd.mem_id;
+                    std::ptr::write(id, cmd.mem_id);
                 }
             }
             if !offset.is_null() {
                 unsafe {
-                    *offset = cmd.offset;
+                    std::ptr::write(offset, cmd.offset);
                 }
             }
             0
@@ -449,7 +487,11 @@ pub fn obmm_query_memid_by_pa(pa: u64, id: *mut MemId, offset: *mut u64) -> i32 
 ///
 /// # Returns
 /// 0 on success, -1 on failure
-pub fn obmm_query_pa_by_memid(id: MemId, offset: u64, pa: *mut u64) -> i32 {
+///
+/// # Safety
+///
+/// The caller must ensure that `pa` is either null or points to a writable `u64`.
+pub unsafe fn obmm_query_pa_by_memid(id: MemId, offset: u64, pa: *mut u64) -> i32 {
     if pa.is_null() {
         return -1;
     }
@@ -470,7 +512,7 @@ pub fn obmm_query_pa_by_memid(id: MemId, offset: u64, pa: *mut u64) -> i32 {
     match result {
         Ok(_) => {
             unsafe {
-                *pa = cmd.pa;
+                std::ptr::write(pa, cmd.pa);
             }
             0
         }

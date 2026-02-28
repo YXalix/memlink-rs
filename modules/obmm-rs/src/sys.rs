@@ -4,7 +4,7 @@
 //!
 //! # Implementation Note
 //!
-//! This module is now a thin wrapper around the pure Rust [`kernel`] module
+//! This module is now a thin wrapper around the pure Rust `kernel` module
 //! which directly communicates with the OBMM kernel module via ioctl system calls.
 //! The C library (`libobmm.so`) is no longer required.
 //!
@@ -36,7 +36,12 @@ mod stubs {
     }
 
     /// Stub implementation of obmm_import
-    pub fn obmm_import(_desc: *const c_void, _flags: u64, _base_dist: i32, _numa: *mut i32) -> MemId {
+    pub fn obmm_import(
+        _desc: *const c_void,
+        _flags: u64,
+        _base_dist: i32,
+        _numa: *mut i32,
+    ) -> MemId {
         1 // Return a dummy valid mem_id
     }
 
@@ -72,20 +77,30 @@ mod stubs {
     }
 
     /// Stub implementation of obmm_query_memid_by_pa
-    pub fn obmm_query_memid_by_pa(_pa: u64, id: *mut MemId, offset: *mut u64) -> i32 {
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `id` and `offset` are either null or point to
+    /// valid memory locations.
+    pub unsafe fn obmm_query_memid_by_pa(_pa: u64, id: *mut MemId, offset: *mut u64) -> i32 {
         if !id.is_null() {
-            unsafe { *id = 1 };
+            unsafe { std::ptr::write(id, 1) };
         }
         if !offset.is_null() {
-            unsafe { *offset = 0 };
+            unsafe { std::ptr::write(offset, 0) };
         }
         0 // Success
     }
 
     /// Stub implementation of obmm_query_pa_by_memid
-    pub fn obmm_query_pa_by_memid(_id: MemId, _offset: u64, pa: *mut u64) -> i32 {
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `pa` is either null or points to a valid
+    /// memory location.
+    pub unsafe fn obmm_query_pa_by_memid(_id: MemId, _offset: u64, pa: *mut u64) -> i32 {
         if !pa.is_null() {
-            unsafe { *pa = 0x1000_0000 };
+            unsafe { std::ptr::write(pa, 0x1000_0000) };
         }
         0 // Success
     }

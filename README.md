@@ -315,6 +315,39 @@ cargo test --test integration
 - Update documentation as needed
 - Ensure all tests pass (`cargo test`)
 
+### CI/CD Checks
+
+All pull requests must pass the following checks before merging:
+
+```bash
+# Check code formatting
+cargo fmt --all -- --check
+
+# Build and test the workspace
+cargo build --workspace
+cargo test --workspace
+
+# Run clippy lints (treat warnings as errors)
+cargo clippy --workspace --no-default-features -- -D warnings
+
+# Generate documentation
+cargo doc --workspace --no-deps --no-default-features
+
+# Check code with doc tests
+cargo test --doc --workspace
+```
+
+**Required Checks:**
+
+| Check | Command | Description |
+|-------|---------|-------------|
+| Format | `cargo fmt --all -- --check` | Ensures consistent code formatting |
+| Lint | `cargo clippy --workspace --no-default-features -- -D warnings` | Static analysis with zero warnings tolerance |
+| Documentation | `cargo doc --workspace --no-deps --no-default-features` | Verifies docs build without errors |
+| Tests | `cargo test --workspace` | Runs all unit and integration tests |
+
+Run these checks locally before pushing to ensure your PR passes CI.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

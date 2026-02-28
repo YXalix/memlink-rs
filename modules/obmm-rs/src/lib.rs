@@ -10,9 +10,9 @@
 //!
 //! - [`error`]: Custom error types and result aliases
 //! - [`types`]: Type definitions, constants, and bitflags
-//! - [`kernel_abi`]: Kernel ABI definitions (ioctl constants and structures)
-//! - [`device`]: Low-level device file operations
-//! - [`kernel`]: Pure Rust implementation of OBMM kernel interface
+//! - `kernel_abi`: Kernel ABI definitions (ioctl constants and structures)
+//! - `device`: Low-level device file operations
+//! - `kernel`: Pure Rust implementation of OBMM kernel interface
 //! - [`export`]: Safe wrappers for memory export operations
 //! - [`import`]: Safe wrappers for memory import operations
 //! - [`query`]: Safe wrappers for memory query operations
@@ -43,18 +43,6 @@
 //! # Build without default features to use stub implementations
 //! cargo build --no-default-features
 //! ```
-
-// Allow some warnings during the refactoring process
-#![allow(
-    dead_code,
-    unreachable_pub,
-    trivial_casts,
-    unused_unsafe,
-    unused_results,
-    unused_imports,
-    unused_parens,
-    unused_qualifications
-)]
 //!
 //! # Quick Start
 //!
@@ -71,6 +59,7 @@
 //! let pa = query_pa_by_memid(mem_id, 0).expect("Query failed");
 //! println!("Physical address: 0x{:x}", pa);
 //! ```
+
 #![warn(
     absolute_paths_not_starting_with_crate,
     explicit_outlives_requirements,
@@ -88,23 +77,15 @@
     rust_2021_prefixes_incompatible_syntax,
     rust_2021_prelude_collisions,
     single_use_lifetimes,
-    trivial_casts,
     trivial_numeric_casts,
-    unreachable_pub,
     unsafe_op_in_unsafe_fn,
     unstable_features,
     unused_extern_crates,
     unused_import_braces,
     unused_lifetimes,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences,
-    clippy::all,
-    clippy::pedantic,
-    clippy::cargo
+    variant_size_differences
 )]
-
-// Allow some warnings during the refactoring process
+// Allow certain warnings that are common in kernel interface code
 #![allow(
     dead_code,
     unreachable_pub,

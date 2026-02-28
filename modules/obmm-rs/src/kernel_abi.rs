@@ -27,10 +27,7 @@ const IOC_READ: u32 = 2;
 
 #[inline]
 const fn _ioc(dir: u32, ty: u32, nr: u32, size: u32) -> u32 {
-    (dir << IOC_DIRSHIFT)
-        | (ty << IOC_TYPESHIFT)
-        | (nr << IOC_NRSHIFT)
-        | (size << IOC_SIZESHIFT)
+    (dir << IOC_DIRSHIFT) | (ty << IOC_TYPESHIFT) | (nr << IOC_NRSHIFT) | (size << IOC_SIZESHIFT)
 }
 
 #[inline]
@@ -104,9 +101,8 @@ pub const OBMM_IMPORT_FLAG_PREIMPORT: u64 = 0x2;
 pub const OBMM_IMPORT_FLAG_NUMA_REMOTE: u64 = 0x4;
 
 /// Valid import flag mask
-pub const OBMM_IMPORT_FLAG_MASK: u64 = OBMM_IMPORT_FLAG_ALLOW_MMAP
-    | OBMM_IMPORT_FLAG_PREIMPORT
-    | OBMM_IMPORT_FLAG_NUMA_REMOTE;
+pub const OBMM_IMPORT_FLAG_MASK: u64 =
+    OBMM_IMPORT_FLAG_ALLOW_MMAP | OBMM_IMPORT_FLAG_PREIMPORT | OBMM_IMPORT_FLAG_NUMA_REMOTE;
 
 // ============================================================================
 // Unimport Flags
@@ -326,7 +322,7 @@ pub struct ObmmCmdUnimport {
 
 /// Address query command structure
 #[repr(C, align(8))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct ObmmCmdAddrQuery {
     /// Query key type (OBMM_QUERY_BY_PA or OBMM_QUERY_BY_ID_OFFSET)
     pub key_type: u32,
@@ -337,18 +333,6 @@ pub struct ObmmCmdAddrQuery {
     pub offset: u64,
     /// Physical address (input/output)
     pub pa: u64,
-}
-
-impl Default for ObmmCmdAddrQuery {
-    fn default() -> Self {
-        Self {
-            key_type: 0,
-            _pad: 0,
-            mem_id: 0,
-            offset: 0,
-            pa: 0,
-        }
-    }
 }
 
 /// Import command structure

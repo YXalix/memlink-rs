@@ -65,11 +65,13 @@ impl<T: Default> ExportedMemory<T> {
     /// ```
     #[inline]
     pub fn export(lengths: &[usize], flags: ObmmExportFlags) -> Result<Self> {
-        let (mem_id, desc) =
-            mem_export::<T>(lengths, flags).map_err(|_e| ObmmError::ExportFailed("export failed".to_string()))?;
+        let (mem_id, desc) = mem_export::<T>(lengths, flags)
+            .map_err(|_e| ObmmError::ExportFailed("export failed".to_string()))?;
 
         if mem_id == OBMM_INVALID_MEMID {
-            return Err(ObmmError::ExportFailed("invalid memid returned".to_string()));
+            return Err(ObmmError::ExportFailed(
+                "invalid memid returned".to_string(),
+            ));
         }
 
         Ok(Self {
@@ -200,7 +202,9 @@ impl ImportedMemory {
         let ImportResult { mem_id, numa_node } = mem_import(desc, flags, base_dist)?;
 
         if mem_id == OBMM_INVALID_MEMID {
-            return Err(ObmmError::ImportFailed("invalid memid returned".to_string()));
+            return Err(ObmmError::ImportFailed(
+                "invalid memid returned".to_string(),
+            ));
         }
 
         Ok(Self {

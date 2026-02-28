@@ -52,7 +52,9 @@ pub fn mem_import(_: &ObmmMemDesc<UbPrivData>, _: ObmmExportFlags, _: i32) -> Re
     let memid = 1;
     let numa = 0;
     if memid == OBMM_INVALID_MEMID {
-        Err(ObmmError::ImportFailed("invalid memid returned".to_string()))
+        Err(ObmmError::ImportFailed(
+            "invalid memid returned".to_string(),
+        ))
     } else {
         Ok(ImportResult {
             mem_id: memid,
@@ -93,7 +95,9 @@ pub fn mem_import(
     let memid =
         unsafe { sys::obmm_import(desc_ptr.cast::<c_void>(), flags.bits(), base_dist, numa_ptr) };
     if memid == OBMM_INVALID_MEMID {
-        Err(ObmmError::ImportFailed("invalid memid returned".to_string()))
+        Err(ObmmError::ImportFailed(
+            "invalid memid returned".to_string(),
+        ))
     } else {
         Ok(ImportResult {
             mem_id: memid,
@@ -263,6 +267,9 @@ pub fn unpreimport(info: &ObmmPreimportInfo, flags: ObmmPreimportFlags) -> Resul
     if ret == 0 {
         Ok(())
     } else {
-        Err(ObmmError::UnpreimportFailed(format!("return code: {}", ret)))
+        Err(ObmmError::UnpreimportFailed(format!(
+            "return code: {}",
+            ret
+        )))
     }
 }

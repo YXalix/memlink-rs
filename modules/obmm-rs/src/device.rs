@@ -4,7 +4,7 @@
 //! using ioctl system calls.
 
 use crate::error::ObmmError;
-use libc::{c_char, c_int, c_ulong, c_void, close, ioctl, open, O_CLOEXEC, O_RDWR};
+use libc::{O_CLOEXEC, O_RDWR, c_char, c_int, c_ulong, c_void, close, ioctl, open};
 use std::os::fd::RawFd;
 use std::sync::{Mutex, MutexGuard};
 
@@ -89,9 +89,9 @@ impl Drop for Device {
 /// This function provides thread-safe access to a singleton Device instance.
 /// The device is opened on first access and reused for subsequent calls.
 fn get_device() -> Result<MutexGuard<'static, Option<Device>>, ObmmError> {
-    let mut guard = DEVICE.lock().map_err(|_| {
-        ObmmError::DeviceError("Failed to lock device mutex".to_string())
-    })?;
+    let mut guard = DEVICE
+        .lock()
+        .map_err(|_| ObmmError::DeviceError("Failed to lock device mutex".to_string()))?;
 
     if guard.is_none() {
         *guard = Some(Device::open()?);

@@ -89,7 +89,10 @@ pub fn set_ownership(fd: i32, start: u64, end: u64, prot: i32) -> Result<()> {
     if ret == 0 {
         Ok(())
     } else {
-        Err(ObmmError::SetOwnershipFailed(format!("return code: {}", ret)))
+        Err(ObmmError::SetOwnershipFailed(format!(
+            "return code: {}",
+            ret
+        )))
     }
 }
 
