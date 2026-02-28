@@ -72,7 +72,7 @@ pub enum PathnameType {
     SharedLibrary,
     /// Memory-mapped file
     MappedFile,
-    /// Kernel virtual memory (e.g., [vdso], [vsyscall])
+    /// Kernel virtual memory (e.g., \[vdso\], \[vsyscall\])
     Kernel,
     /// Other special mappings
     Other,

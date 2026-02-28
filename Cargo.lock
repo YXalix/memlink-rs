@@ -661,7 +661,6 @@ name = "ubfwctl"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bindgen",
  "bitflags",
  "libc",
  "nix",
