@@ -9,6 +9,8 @@
 //! - **Page Scanning**: Detect idle (cold) and accessed (hot) pages via
 //!   hardware page table access/dirty bits
 //! - **Page Swapping**: Reclaim cold pages to swap to free up DRAM
+//! - **VMA Awareness**: Full support for Virtual Memory Area discovery and
+//!   per-VMA operations
 //! - **VM Support**: Scan and swap VM guest memory via EPT/stage-2 page tables
 //! - **Proactive Reclaim**: Configure kernel background thread for automatic
 //!   swapcache reclaim based on watermarks
@@ -20,6 +22,10 @@
 //! - **`sys`**: Low-level FFI bindings to kernel procfs/IOCTL (unsafe)
 //! - **`types`**: Data structures and constants
 //! - **`error`**: Error types and handling
+//! - **`vma`**: Virtual Memory Area discovery and management
+//! - **`session`**: Unified `EtmemSession` for combined operations
+//! - **`builder`**: Fluent builder APIs for ergonomic operations
+//! - **`workflow`**: High-level workflow builders for complex operations
 //! - **`scan`**: Safe wrappers for page scanning operations
 //! - **`swap`**: Safe wrappers for page swapping operations
 //! - **`util`**: Utility functions and helpers
@@ -30,40 +36,94 @@
 //! - CAP_SYS_ADMIN capability (root access)
 //! - Kernel modules: etmem_scan.ko, etmem_swap.ko (if built as modules)
 //!
-//! # Example: Scanning for Idle Pages
+//! # Quick Start
+//!
+//! ## Using the Unified Session API (Recommended)
 //!
 //! ```no_run
-//! use etmem_rs::{IdlePageScanner, ScanConfig, ScanFlags};
+//! use etmem_rs::{EtmemSession, SessionConfig, ScanConfig};
 //!
-//! // Configure scan to only report huge pages
-//! let config = ScanConfig::default()
-//!     .with_flags(ScanFlags::SCAN_HUGE_PAGE);
+//! // Create a session and discover VMAs
+//! let mut session = EtmemSession::new(
+//!     std::process::id() as u32,
+//!     SessionConfig::default()
+//! ).expect("Failed to create session");
 //!
-//! // Scan current process for idle pages
-//! let pages = IdlePageScanner::scan_process(std::process::id() as u32, config)
-//!     .expect("Failed to scan process");
+//! // Scan all scannable VMAs and swap idle pages
+//! let report = session.scan_and_swap_all(ScanConfig::default())
+//!     .expect("Failed to scan and swap");
 //!
-//! for page in pages {
-//!     if page.is_idle() {
-//!         println!("Idle page at {:x} (size: {} bytes)",
-//!             page.address, page.total_size());
-//!     }
-//! }
+//! println!("Swapped {} pages ({} bytes)",
+//!     report.pages_swapped, report.bytes_swapped);
 //! ```
 //!
-//! # Example: Swapping Cold Pages
+//! ## Using the Builder Pattern
 //!
 //! ```no_run
-//! use etmem_rs::{SwapSession, SwapConfig};
+//! use etmem_rs::builder::ScanBuilder;
 //!
-//! let mut session = SwapSession::new(
-//!     std::process::id() as u32,
-//!     SwapConfig::default()
-//! ).expect("Failed to create swap session");
+//! // Scan heap for idle pages
+//! let pages = ScanBuilder::for_process(std::process::id() as u32)
+//!     .expect("Failed to create builder")
+//!     .for_heap()
+//!     .idle_only()
+//!     .scan()
+//!     .expect("Failed to scan");
 //!
-//! // Swap a specific address
-//! session.swap_address(0x7fff0000)
-//!     .expect("Failed to swap page");
+//! println!("Found {} idle pages in heap", pages.len());
+//! ```
+//!
+//! ## Using the Workflow API
+//!
+//! ```no_run
+//! use etmem_rs::workflow::ScanAndSwapWorkflow;
+//! use etmem_rs::vma::VmaFilter;
+//!
+//! // Declarative workflow with filtering
+//! let report = ScanAndSwapWorkflow::new(std::process::id() as u32)
+//!     .expect("Failed to create workflow")
+//!     .target_vma_types(VmaFilter::ANONYMOUS | VmaFilter::WRITABLE)
+//!     .with_idle_threshold(0.8)
+//!     .execute()
+//!     .expect("Failed to execute workflow");
+//!
+//! println!("Scanned {} VMAs, swapped {} pages",
+//!     report.vmas_scanned, report.pages_swapped);
+//! ```
+//!
+//! ## Quick One-Liners
+//!
+//! ```no_run
+//! use etmem_rs::builder::{quick_scan_heap, quick_swap};
+//!
+//! // Quick scan for idle heap pages
+//! let pages = quick_scan_heap(std::process::id() as u32)
+//!     .expect("Failed to scan");
+//!
+//! // Quick swap specific addresses
+//! let swapped = quick_swap(std::process::id() as u32, &[0x7fff0000])
+//!     .expect("Failed to swap");
+//! ```
+//!
+//! # VMA Awareness
+//!
+//! The crate provides comprehensive VMA (Virtual Memory Area) support:
+//!
+//! ```no_run
+//! use etmem_rs::vma::VmaMap;
+//!
+//! // Discover all VMAs for a process
+//! let vma_map = VmaMap::for_process(std::process::id() as u32)
+//!     .expect("Failed to parse VMAs");
+//!
+//! // Access specific regions
+//! if let Some(heap) = vma_map.heap() {
+//!     println!("Heap: {} bytes", heap.size());
+//! }
+//!
+//! // Filter by criteria
+//! let scannable = vma_map.scannable();
+//! let swappable = vma_map.swappable();
 //! ```
 //!
 //! # Safety
@@ -76,17 +136,23 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 
 // Re-export modules
+pub mod builder;
 pub mod error;
 pub mod scan;
+pub mod session;
 pub mod swap;
 pub mod sys;
 pub mod types;
 pub mod util;
+pub mod vma;
+pub mod workflow;
 
 // Public API exports
 pub use error::{EtmemError, Result, ToEtmemResult};
 pub use scan::{IdlePageScanner, PageIdleCtrl, ScanSession};
+pub use session::{EtmemSession, ScanAndSwapReport, SessionConfig, VmaScanResults};
 pub use swap::{PageSwapper, SwapSession, SwapcacheConfig};
+pub use vma::{PathnameType, VmaFilter, VmaMap, VmaPermissions, VmaRegion};
 pub use types::{
     AddressRange, BufferStatus, IdlePageInfo, PipEncoding, ProcIdlePageType, ScanConfig,
     ScanFlags, SwapConfig, SwapcacheWatermark, WatermarkConfig, IDLE_SCAN_MAGIC, INVALID_PAGE,
@@ -99,6 +165,21 @@ pub use util::{
     group_by_type, huge_page_align_down, is_etmem_available, is_huge_page_aligned, is_page_aligned,
     is_root, page_align_down, page_align_up, pages_to_bytes, suggest_page_size, IdlePageStats,
 };
+
+/// Convenience prelude module for common imports
+///
+/// # Example
+/// ```
+/// use etmem_rs::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::builder::{quick_scan_heap, quick_scan_idle, quick_swap, ScanBuilder, SwapBuilder};
+    pub use crate::error::{EtmemError, Result};
+    pub use crate::session::{EtmemSession, SessionConfig};
+    pub use crate::types::{AddressRange, IdlePageInfo, ScanConfig, SwapConfig};
+    pub use crate::vma::{VmaFilter, VmaMap, VmaRegion};
+    pub use crate::workflow::ScanAndSwapWorkflow;
+}
 
 // Version information
 /// Crate version

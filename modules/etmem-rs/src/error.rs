@@ -52,6 +52,10 @@ pub enum EtmemError {
     NotSupported,
     /// Address range invalid
     InvalidRange,
+    /// VMA parse error
+    VmaParseError(String),
+    /// Invalid VMA region
+    InvalidVma(String),
 }
 
 impl fmt::Display for EtmemError {
@@ -90,6 +94,8 @@ impl fmt::Display for EtmemError {
             EtmemError::IoError(msg) => write!(f, "I/O error: {}", msg),
             EtmemError::NotSupported => write!(f, "Operation not supported"),
             EtmemError::InvalidRange => write!(f, "Invalid address range"),
+            EtmemError::VmaParseError(msg) => write!(f, "VMA parse error: {}", msg),
+            EtmemError::InvalidVma(msg) => write!(f, "Invalid VMA: {}", msg),
         }
     }
 }

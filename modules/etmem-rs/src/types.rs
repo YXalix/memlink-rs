@@ -277,7 +277,7 @@ impl IdlePageInfo {
 /// Virtual address range for scanning
 ///
 /// Defines a range of virtual addresses to scan.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, Hash)]
 pub struct AddressRange {
     /// Start address (inclusive)
     pub start: u64,
